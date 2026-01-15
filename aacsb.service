@@ -1,0 +1,16 @@
+[Unit]
+Description=AACSB Accreditation FastAPI Application
+After=network.target mariadb.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/aacsb/backend
+Environment="PATH=/var/www/aacsb/venv/bin"
+ExecStart=/var/www/aacsb/venv/bin/uvicorn main:app --host 127.0.0.1 --port 8001 --workers 2
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

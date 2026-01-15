@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AOL - AACSB Accreditation</title>
+    <link rel="stylesheet" href="/aacsb/static/css/style.css">
+</head>
+<body>
+    <nav class="nav">
+        <div class="container">
+            <a href="/aacsb/aol" class="nav-brand">AACSB Accreditation</a>
+            <ul class="nav-links">
+                <li><a href="/aacsb/aol" class="active">AOL</a></li>
+                <li><a href="/aacsb/research">Research</a></li>
+            </ul>
+            <div class="nav-user" id="nav-user">
+                <span>Loading...</span>
+            </div>
+        </div>
+    </nav>
+
+    <header class="page-header">
+        <div class="container">
+            <div>
+                <h1 class="page-title">Assurance of Learning</h1>
+                <p class="page-subtitle">Overview of study programmes and learning goals</p>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="grid grid-3" id="programmes-grid">
+            <div class="loading"><div class="spinner"></div></div>
+        </div>
+    </main>
+
+    <script src="/aacsb/static/aol/js/api.js"></script>
+    <script src="/aacsb/static/aol/js/app.js"></script>
+</body>
+</html>

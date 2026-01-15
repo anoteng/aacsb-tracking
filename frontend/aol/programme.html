@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Programme - AOL - AACSB Accreditation</title>
+    <link rel="stylesheet" href="/aacsb/static/css/style.css">
+</head>
+<body>
+    <nav class="nav">
+        <div class="container">
+            <a href="/aacsb/aol" class="nav-brand">AACSB Accreditation</a>
+            <ul class="nav-links">
+                <li><a href="/aacsb/aol" class="active">AOL</a></li>
+                <li><a href="/aacsb/research">Research</a></li>
+            </ul>
+            <div class="nav-user" id="nav-user">
+                <span>Loading...</span>
+            </div>
+        </div>
+    </nav>
+
+    <header class="page-header">
+        <div class="container">
+            <div>
+                <a href="/aacsb/aol" class="text-sm text-muted">&larr; Back to programmes</a>
+                <h1 class="page-title" id="programme-name">Loading...</h1>
+                <p class="page-subtitle" id="programme-code"></p>
+            </div>
+            <div id="admin-actions"></div>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" data-tab="goals">Learning Goals</button>
+            <button class="tab" data-tab="matrix">Curriculum Matrix</button>
+            <button class="tab" data-tab="courses">Courses</button>
+        </div>
+
+        <!-- Goals Tab -->
+        <div id="tab-goals" class="tab-content">
+            <div class="flex-between mb-2">
+                <h2>Learning Goals</h2>
+                <button class="btn btn-primary hidden" id="add-goal-btn" onclick="showAddGoalModal()">
+                    + Add Goal
+                </button>
+            </div>
+            <div id="goals-list">
+                <div class="loading"><div class="spinner"></div></div>
+            </div>
+        </div>
+
+        <!-- Matrix Tab -->
+        <div id="tab-matrix" class="tab-content hidden">
+            <div id="matrix-container">
+                <div class="loading"><div class="spinner"></div></div>
+            </div>
+        </div>
+
+        <!-- Courses Tab -->
+        <div id="tab-courses" class="tab-content hidden">
+            <div class="flex-between mb-2">
+                <h2>Courses in Programme</h2>
+                <button class="btn btn-primary hidden" id="add-course-btn" onclick="showAddCourseModal()">
+                    + Add Course
+                </button>
+            </div>
+            <div id="courses-list">
+                <div class="loading"><div class="spinner"></div></div>
+            </div>
+        </div>
+
+        <!-- Goal Detail / Rubrics -->
+        <div id="goal-detail" class="hidden">
+            <div class="flex-between mb-2">
+                <div>
+                    <a href="#" onclick="hideGoalDetail(); return false;" class="text-sm text-muted">&larr; Back to goals</a>
+                    <h2 id="goal-detail-title">Goal Details</h2>
+                </div>
+            </div>
+            <div id="rubrics-container"></div>
+        </div>
+    </main>
+
+    <script src="/aacsb/static/aol/js/api.js"></script>
+    <script src="/aacsb/static/aol/js/matrix.js"></script>
+    <script src="/aacsb/static/aol/js/rubric.js"></script>
+    <script>
+        // Get programme ID from URL
+        const programmeId = parseInt(window.location.pathname.split('/').pop());
+
+        let user = null;
+        let programme = null;
+        let goals = [];
+        let categories = [];
+        let courses = [];
+        let matrixComponent = null;
+
+        async function init() {
+            try {
+                // Load user
+                user = await api.getCurrentUser();
+                renderNav();
+
+                // Load programme
+                programme = await api.getProgramme(programmeId);
+                document.getElementById('programme-name').textContent = programme.name_eng || programme.name_no;
+                document.getElementById('programme-code').textContent = programme.programme_code;
+                document.title = `${programme.programme_code} - AOL - AACSB`;
+
+                // Load categories
+                categories = await api.getCategories();
+
+                // Show admin buttons
+                if (isAdmin()) {
+                    document.getElementById('add-goal-btn').classList.remove('hidden');
+                    document.getElementById('add-course-btn').classList.remove('hidden');
+                }
+
+                // Load initial tab
+                loadGoals();
+                setupTabs();
+            } catch (error) {
+                console.error('Init failed:', error);
+                if (error.message === 'Unauthorized') {
+                    window.location.href = '/aacsb/login';
+                }
+            }
+        }
+
+        function renderNav() {
+            const navUser = document.getElementById('nav-user');
+            navUser.innerHTML = `
+                <span>${user.firstname} ${user.lastname}</span>
+                <a href="/aacsb/aol/settings" class="btn btn-sm btn-outline" style="color: white; border-color: rgba(255,255,255,0.3);">
+                    Settings
+                </a>
+                <button onclick="logout()" class="btn btn-sm btn-outline" style="color: white; border-color: rgba(255,255,255,0.3);">
+                    Logout
+                </button>
+            `;
+
+            // Add Admin link for system admins
+            if (isAdmin()) {
+                const navLinks = document.querySelector('.nav-links');
+                if (navLinks && !navLinks.querySelector('a[href="/aacsb/admin"]')) {
+                    const adminLi = document.createElement('li');
+                    adminLi.innerHTML = '<a href="/aacsb/admin">Admin</a>';
+                    navLinks.appendChild(adminLi);
+                }
+            }
+        }
+
+        async function logout() {
+            await api.logout();
+            window.location.href = '/aacsb/login';
+        }
+
+        function isAdmin() {
+            return user && user.roles && user.roles.includes('system_admin');
+        }
+
+        function canEditGoal(goal) {
+            if (isAdmin()) return true;
+            if (user.roles.includes('programme_leader')) return true;
+            if (goal.assigned_staff) {
+                return goal.assigned_staff.some(s => s.user_id === user.id);
+            }
+            return false;
+        }
+
+        function setupTabs() {
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    // Update active tab
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+
+                    // Show content
+                    const tabName = tab.dataset.tab;
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+                    document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+
+                    // Hide goal detail
+                    document.getElementById('goal-detail').classList.add('hidden');
+
+                    // Load tab content
+                    if (tabName === 'matrix' && !matrixComponent) {
+                        matrixComponent = new MatrixComponent('matrix-container', programmeId);
+                        // Pass app reference for permission checks
+                        window.app = { isAdmin, canEditGoal };
+                        matrixComponent.load();
+                    } else if (tabName === 'courses' && courses.length === 0) {
+                        loadCourses();
+                    }
+                });
+            });
+        }
+
+        async function loadGoals() {
+            const container = document.getElementById('goals-list');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+            try {
+                goals = await api.getGoals(programmeId);
+                renderGoals();
+            } catch (error) {
+                container.innerHTML = `<div class="alert alert-error">${error.message}</div>`;
+            }
+        }
+
+        function renderGoals() {
+            const container = document.getElementById('goals-list');
+
+            if (goals.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h3>No learning goals defined</h3>
+                        <p>Add learning goals to define what students should achieve in this programme.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Group by category
+            const grouped = {};
+            categories.forEach(cat => {
+                grouped[cat.id] = { category: cat, goals: [] };
+            });
+
+            goals.forEach(goal => {
+                if (grouped[goal.category.id]) {
+                    grouped[goal.category.id].goals.push(goal);
+                }
+            });
+
+            container.innerHTML = Object.values(grouped)
+                .filter(g => g.goals.length > 0)
+                .map(g => `
+                    <div class="card">
+                        <h3 class="mb-1">${g.category.name_eng || g.category.name_no}</h3>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th style="width: 50%;">Goal</th>
+                                        <th>Measured</th>
+                                        <th>Target</th>
+                                        <th>Assigned Staff</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${g.goals.map(goal => `
+                                        <tr>
+                                            <td>${goal.goal_eng || goal.goal_no}</td>
+                                            <td>${goal.is_measured ? '<span class="text-success">Yes</span>' : '<span class="text-muted">No</span>'}</td>
+                                            <td>${goal.target_percentage}%</td>
+                                            <td>${goal.assigned_staff.map(s => s.name).join(', ') || '-'}</td>
+                                            <td class="text-right">
+                                                ${canEditGoal(goal) ? `
+                                                    <button class="btn btn-sm btn-outline" onclick="showGoalDetail(${goal.id})">
+                                                        View Rubrics
+                                                    </button>
+                                                ` : `
+                                                    <button class="btn btn-sm btn-outline" onclick="showGoalDetail(${goal.id})">
+                                                        View
+                                                    </button>
+                                                `}
+                                                ${isAdmin() ? `
+                                                    <button class="btn btn-sm btn-outline" onclick="showEditGoalModal(${goal.id})">
+                                                        Edit
+                                                    </button>
+                                                ` : ''}
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `).join('');
+        }
+
+        function showGoalDetail(goalId) {
+            const goal = goals.find(g => g.id === goalId);
+            if (!goal) return;
+
+            document.getElementById('tab-goals').classList.add('hidden');
+            document.getElementById('goal-detail').classList.remove('hidden');
+            document.getElementById('goal-detail-title').textContent = goal.goal_eng || goal.goal_no;
+
+            // Initialize rubric component
+            rubricComponent = new RubricComponent('rubrics-container', goalId);
+            rubricComponent.setGoal(goal);
+            // Pass app reference
+            window.app = { isAdmin, canEditGoal, user };
+            rubricComponent.load();
+        }
+
+        function hideGoalDetail() {
+            document.getElementById('tab-goals').classList.remove('hidden');
+            document.getElementById('goal-detail').classList.add('hidden');
+        }
+
+        async function loadCourses() {
+            const container = document.getElementById('courses-list');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+            try {
+                courses = await api.getProgrammeCourses(programmeId);
+                renderCourses();
+            } catch (error) {
+                container.innerHTML = `<div class="alert alert-error">${error.message}</div>`;
+            }
+        }
+
+        function renderCourses() {
+            const container = document.getElementById('courses-list');
+
+            if (courses.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h3>No courses assigned</h3>
+                        <p>Add courses to this programme to build the curriculum matrix.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Name</th>
+                                <th>ECTS</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${courses.map(course => `
+                                <tr>
+                                    <td><strong>${course.course_code}</strong></td>
+                                    <td>${course.name_eng || course.name_no || '-'}</td>
+                                    <td>${course.ects}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function showAddGoalModal() {
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal">
+                    <div class="modal-header">
+                        <h2>Add Learning Goal</h2>
+                        <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label class="form-label">Category</label>
+                            <select id="goal-category" class="form-select" required>
+                                ${categories.map(c => `<option value="${c.id}">${c.name_eng || c.name_no}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Goal (English)</label>
+                            <textarea id="goal-eng" class="form-textarea" required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Goal (Norwegian)</label>
+                            <textarea id="goal-no" class="form-textarea"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">
+                                <input type="checkbox" id="goal-measured">
+                                This goal is measured
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Target % (meets or exceeds expectations)</label>
+                            <input type="number" id="goal-target" class="form-input" value="80" min="0" max="100">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+                        <button class="btn btn-primary" id="save-goal-btn">Add Goal</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+            requestAnimationFrame(() => modal.classList.add('active'));
+
+            document.getElementById('save-goal-btn').addEventListener('click', async () => {
+                const data = {
+                    goal_category: parseInt(document.getElementById('goal-category').value),
+                    goal_eng: document.getElementById('goal-eng').value,
+                    goal_no: document.getElementById('goal-no').value,
+                    is_measured: document.getElementById('goal-measured').checked,
+                    target_percentage: parseFloat(document.getElementById('goal-target').value),
+                };
+
+                if (!data.goal_eng) {
+                    alert('Goal description is required');
+                    return;
+                }
+
+                try {
+                    await api.createGoal(programmeId, data);
+                    modal.remove();
+                    loadGoals();
+                } catch (error) {
+                    alert('Failed to create goal: ' + error.message);
+                }
+            });
+        }
+
+        function showEditGoalModal(goalId) {
+            const goal = goals.find(g => g.id === goalId);
+            if (!goal) return;
+
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal">
+                    <div class="modal-header">
+                        <h2>Edit Learning Goal</h2>
+                        <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label class="form-label">Category</label>
+                            <select id="goal-category" class="form-select" required>
+                                ${categories.map(c => `<option value="${c.id}" ${c.id === goal.category.id ? 'selected' : ''}>${c.name_eng || c.name_no}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Goal (English)</label>
+                            <textarea id="goal-eng" class="form-textarea" required>${goal.goal_eng || ''}</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Goal (Norwegian)</label>
+                            <textarea id="goal-no" class="form-textarea">${goal.goal_no || ''}</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">
+                                <input type="checkbox" id="goal-measured" ${goal.is_measured ? 'checked' : ''}>
+                                This goal is measured
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Target % (meets or exceeds expectations)</label>
+                            <input type="number" id="goal-target" class="form-input" value="${goal.target_percentage}" min="0" max="100">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-danger" onclick="deleteGoal(${goalId}); this.closest('.modal-overlay').remove();">Delete</button>
+                        <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+                        <button class="btn btn-primary" id="save-goal-btn">Save</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+            requestAnimationFrame(() => modal.classList.add('active'));
+
+            document.getElementById('save-goal-btn').addEventListener('click', async () => {
+                const data = {
+                    goal_category: parseInt(document.getElementById('goal-category').value),
+                    goal_eng: document.getElementById('goal-eng').value,
+                    goal_no: document.getElementById('goal-no').value,
+                    is_measured: document.getElementById('goal-measured').checked,
+                    target_percentage: parseFloat(document.getElementById('goal-target').value),
+                };
+
+                try {
+                    await api.updateGoal(goalId, data);
+                    modal.remove();
+                    loadGoals();
+                } catch (error) {
+                    alert('Failed to update goal: ' + error.message);
+                }
+            });
+        }
+
+        async function deleteGoal(goalId) {
+            if (!confirm('Are you sure you want to delete this goal? This will also delete all associated rubrics and assessments.')) {
+                return;
+            }
+
+            try {
+                await api.deleteGoal(goalId);
+                loadGoals();
+            } catch (error) {
+                alert('Failed to delete goal: ' + error.message);
+            }
+        }
+
+        function showAddCourseModal() {
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal">
+                    <div class="modal-header">
+                        <h2>Add Course to Programme</h2>
+                        <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label class="form-label">Search Course</label>
+                            <input type="text" id="course-search" class="form-input" placeholder="Type course code or name...">
+                        </div>
+                        <div id="course-results" class="mt-1"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Close</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+            requestAnimationFrame(() => modal.classList.add('active'));
+
+            const searchInput = document.getElementById('course-search');
+            const resultsContainer = document.getElementById('course-results');
+            let searchTimeout;
+
+            searchInput.addEventListener('input', () => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(async () => {
+                    const query = searchInput.value.trim();
+                    if (query.length < 2) {
+                        resultsContainer.innerHTML = '';
+                        return;
+                    }
+
+                    try {
+                        const results = await api.searchCourses(query);
+                        resultsContainer.innerHTML = results.map(course => `
+                            <div class="card" style="padding: 0.75rem; cursor: pointer;" onclick="addCourseToProgramme(${course.id}, this)">
+                                <strong>${course.course_code}</strong> - ${course.name_eng || course.name_no || 'No name'}
+                                <span class="text-muted text-sm">(${course.ects} ECTS)</span>
+                            </div>
+                        `).join('');
+                    } catch (error) {
+                        resultsContainer.innerHTML = `<div class="alert alert-error">${error.message}</div>`;
+                    }
+                }, 300);
+            });
+        }
+
+        async function addCourseToProgramme(courseId, element) {
+            try {
+                await api.addCourseToProgramme(programmeId, courseId);
+                element.innerHTML += ' <span class="text-success">Added!</span>';
+                element.style.pointerEvents = 'none';
+                // Reload courses list
+                courses = [];
+                if (!document.getElementById('tab-courses').classList.contains('hidden')) {
+                    loadCourses();
+                }
+            } catch (error) {
+                alert('Failed to add course: ' + error.message);
+            }
+        }
+
+        // Initialize
+        init();
+    </script>
+</body>
+</html>

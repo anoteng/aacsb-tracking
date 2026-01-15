@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Research - AACSB Accreditation</title>
+    <link rel="stylesheet" href="/aacsb/static/css/style.css">
+    <style>
+        .research-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .stat-card .value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        .stat-card .label {
+            color: var(--secondary);
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+        .filters {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .filters select, .filters input {
+            padding: 0.5rem 1rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+        }
+        .pub-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .pub-table th, .pub-table td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .pub-table th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: #475569;
+        }
+        .pub-table tr:hover {
+            background: #f8fafc;
+        }
+        .pub-title {
+            font-weight: 500;
+            color: var(--primary);
+        }
+        .pub-title a {
+            text-decoration: none;
+            color: inherit;
+        }
+        .pub-title a:hover {
+            text-decoration: underline;
+        }
+        .pub-meta {
+            font-size: 0.8rem;
+            color: var(--secondary);
+        }
+        .pub-type {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            background: #e0f2fe;
+            color: #0369a1;
+        }
+        .pub-type.journal { background: #dbeafe; color: #1e40af; }
+        .pub-type.book { background: #dcfce7; color: #166534; }
+        .pub-type.report { background: #fef3c7; color: #92400e; }
+        .pub-type.thesis { background: #f3e8ff; color: #7c3aed; }
+        .chart-container {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+        }
+        .chart-title {
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+        .bar-chart {
+            display: flex;
+            align-items: flex-end;
+            gap: 0.5rem;
+            height: 150px;
+        }
+        .bar {
+            flex: 1;
+            background: var(--primary);
+            border-radius: 4px 4px 0 0;
+            min-width: 30px;
+            position: relative;
+            transition: background 0.2s;
+        }
+        .bar:hover {
+            background: #1e40af;
+        }
+        .bar-label {
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--secondary);
+            margin-top: 0.25rem;
+        }
+        .bar-value {
+            position: absolute;
+            top: -1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .researchers-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .researcher-card {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .researcher-card h4 {
+            margin: 0 0 0.5rem 0;
+        }
+        .researcher-card .count {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        .section-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        .section-tab {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-weight: 500;
+            color: var(--secondary);
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+        }
+        .section-tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+        .section-content {
+            display: none;
+        }
+        .section-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <div class="container">
+            <a href="/aacsb/aol" class="nav-brand">AACSB Accreditation</a>
+            <ul class="nav-links">
+                <li><a href="/aacsb/aol">AOL</a></li>
+                <li><a href="/aacsb/research" class="active">Research</a></li>
+            </ul>
+            <div class="nav-user" id="nav-user">
+                <span>Loading...</span>
+            </div>
+        </div>
+    </nav>
+
+    <header class="page-header">
+        <div class="container">
+            <h1 class="page-title">Research Publications</h1>
+            <p class="page-subtitle">Scientific output inventory from NVA</p>
+        </div>
+    </header>
+
+    <main class="research-container">
+        <div class="filters">
+            <label>
+                Year from:
+                <select id="year-from"></select>
+            </label>
+            <label>
+                Year to:
+                <select id="year-to"></select>
+            </label>
+            <button class="btn btn-primary" onclick="loadPublications()">Load Publications</button>
+        </div>
+
+        <div id="loading" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>Fetching publications from NVA...</p>
+        </div>
+
+        <div id="content" style="display: none;">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="value" id="stat-total">0</div>
+                    <div class="label">Total Publications</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value" id="stat-researchers">0</div>
+                    <div class="label">Researchers</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value" id="stat-journals">0</div>
+                    <div class="label">Journal Articles</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value" id="stat-avg">0</div>
+                    <div class="label">Avg per Researcher</div>
+                </div>
+            </div>
+
+            <div class="section-tabs">
+                <button class="section-tab active" data-section="overview">Overview</button>
+                <button class="section-tab" data-section="publications">Publications</button>
+                <button class="section-tab" data-section="researchers">Researchers</button>
+            </div>
+
+            <div id="section-overview" class="section-content active">
+                <div class="chart-container">
+                    <div class="chart-title">Publications by Year</div>
+                    <div class="bar-chart" id="year-chart"></div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Publications by Type</div>
+                    <div id="type-breakdown"></div>
+                </div>
+            </div>
+
+            <div id="section-publications" class="section-content">
+                <div class="filters">
+                    <input type="text" id="search-pub" placeholder="Search publications..." style="flex: 1; max-width: 400px;">
+                    <select id="filter-type">
+                        <option value="">All types</option>
+                    </select>
+                    <select id="filter-year">
+                        <option value="">All years</option>
+                    </select>
+                </div>
+                <div id="publications-table"></div>
+            </div>
+
+            <div id="section-researchers" class="section-content">
+                <div class="researchers-list" id="researchers-list"></div>
+            </div>
+        </div>
+
+        <div id="no-researchers" class="empty-state" style="display: none;">
+            <h3>No researchers configured</h3>
+            <p>Add researcher IDs to staff members in the Admin section to track publications.</p>
+            <a href="/aacsb/admin" class="btn btn-primary">Go to Admin</a>
+        </div>
+    </main>
+
+    <script>
+        const API_BASE = '/aacsb/api';
+        let currentUser = null;
+        let publicationsData = null;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await checkAuth();
+            initYearSelects();
+            setupTabs();
+
+            // Auto-load if there are researchers
+            loadPublications();
+        });
+
+        async function checkAuth() {
+            try {
+                const response = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' });
+                if (!response.ok) {
+                    window.location.href = '/aacsb/login';
+                    return;
+                }
+                currentUser = await response.json();
+
+                let navHtml = `
+                    <span>${currentUser.firstname} ${currentUser.lastname}</span>
+                    <a href="/aacsb/aol/settings" class="btn btn-sm btn-outline" style="color: white; border-color: rgba(255,255,255,0.3);">Settings</a>
+                    <button onclick="logout()" class="btn btn-sm btn-outline" style="color: white; border-color: rgba(255,255,255,0.3);">Logout</button>
+                `;
+                document.getElementById('nav-user').innerHTML = navHtml;
+
+                // Add Admin link for system admins
+                if (currentUser.roles && currentUser.roles.includes('system_admin')) {
+                    const navLinks = document.querySelector('.nav-links');
+                    if (navLinks && !navLinks.querySelector('a[href="/aacsb/admin"]')) {
+                        const adminLi = document.createElement('li');
+                        adminLi.innerHTML = '<a href="/aacsb/admin">Admin</a>';
+                        navLinks.appendChild(adminLi);
+                    }
+                }
+            } catch (error) {
+                window.location.href = '/aacsb/login';
+            }
+        }
+
+        async function logout() {
+            await fetch(`${API_BASE}/auth/logout`, { method: 'POST', credentials: 'include' });
+            window.location.href = '/aacsb/login';
+        }
+
+        function initYearSelects() {
+            // Use 2025 as current year (hardcoded to avoid system date issues)
+            const currentYear = 2025;
+            const defaultYearFrom = currentYear - 6;  // 2019
+            const yearFrom = document.getElementById('year-from');
+            const yearTo = document.getElementById('year-to');
+
+            for (let y = currentYear; y >= currentYear - 10; y--) {
+                // Option(text, value, defaultSelected, selected) - 4th param sets selection
+                yearFrom.add(new Option(y, y, false, y === defaultYearFrom));
+                yearTo.add(new Option(y, y, false, y === currentYear));
+            }
+        }
+
+        function setupTabs() {
+            document.querySelectorAll('.section-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.section-tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.section-content').forEach(c => c.classList.remove('active'));
+                    tab.classList.add('active');
+                    document.getElementById(`section-${tab.dataset.section}`).classList.add('active');
+                });
+            });
+        }
+
+        async function loadPublications() {
+            const yearFrom = document.getElementById('year-from').value;
+            const yearTo = document.getElementById('year-to').value;
+
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('content').style.display = 'none';
+            document.getElementById('no-researchers').style.display = 'none';
+
+            try {
+                const response = await fetch(
+                    `${API_BASE}/research/publications?year_from=${yearFrom}&year_to=${yearTo}`,
+                    { credentials: 'include' }
+                );
+
+                if (!response.ok) throw new Error('Failed to load publications');
+
+                publicationsData = await response.json();
+
+                if (publicationsData.total_researchers === 0) {
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('no-researchers').style.display = 'block';
+                    return;
+                }
+
+                renderStats();
+                renderYearChart();
+                renderTypeBreakdown();
+                renderPublicationsTable();
+                renderResearchersList();
+                setupFilters();
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
+
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                alert('Failed to load publications: ' + error.message);
+            }
+        }
+
+        function renderStats() {
+            document.getElementById('stat-total').textContent = publicationsData.total_publications;
+            document.getElementById('stat-researchers').textContent = publicationsData.total_researchers;
+
+            const journalCount = publicationsData.publications_by_type['Journal Article'] || 0;
+            document.getElementById('stat-journals').textContent = journalCount;
+
+            const avg = publicationsData.total_researchers > 0
+                ? (publicationsData.total_publications / publicationsData.total_researchers).toFixed(1)
+                : 0;
+            document.getElementById('stat-avg').textContent = avg;
+        }
+
+        function renderYearChart() {
+            const container = document.getElementById('year-chart');
+            const data = publicationsData.publications_by_year;
+            const years = Object.keys(data).sort();
+            const maxValue = Math.max(...Object.values(data), 1);
+
+            container.innerHTML = years.map(year => {
+                const value = data[year];
+                const height = (value / maxValue) * 100;
+                return `
+                    <div style="flex: 1; text-align: center;">
+                        <div class="bar" style="height: ${height}%;">
+                            <span class="bar-value">${value}</span>
+                        </div>
+                        <div class="bar-label">${year}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderTypeBreakdown() {
+            const container = document.getElementById('type-breakdown');
+            const data = publicationsData.publications_by_type;
+
+            const total = Object.values(data).reduce((a, b) => a + b, 0);
+
+            container.innerHTML = Object.entries(data)
+                .sort((a, b) => b[1] - a[1])
+                .map(([type, count]) => {
+                    const pct = total > 0 ? ((count / total) * 100).toFixed(1) : 0;
+                    return `
+                        <div style="display: flex; align-items: center; margin-bottom: 0.5rem;">
+                            <span class="pub-type ${type.toLowerCase().replace(/[^a-z]/g, '')}">${type}</span>
+                            <div style="flex: 1; margin: 0 1rem; background: #e2e8f0; height: 8px; border-radius: 4px;">
+                                <div style="width: ${pct}%; background: var(--primary); height: 100%; border-radius: 4px;"></div>
+                            </div>
+                            <span style="min-width: 80px; text-align: right;">${count} (${pct}%)</span>
+                        </div>
+                    `;
+                }).join('');
+        }
+
+        function renderPublicationsTable(filter = {}) {
+            let pubs = publicationsData.publications;
+
+            // Apply filters
+            if (filter.search) {
+                const term = filter.search.toLowerCase();
+                pubs = pubs.filter(p =>
+                    p.title.toLowerCase().includes(term) ||
+                    p.contributors.some(c => c.name.toLowerCase().includes(term))
+                );
+            }
+            if (filter.type) {
+                pubs = pubs.filter(p => p.type === filter.type);
+            }
+            if (filter.year) {
+                pubs = pubs.filter(p => p.year == filter.year);
+            }
+
+            const container = document.getElementById('publications-table');
+            container.innerHTML = `
+                <table class="pub-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 60px;">Year</th>
+                            <th>Title</th>
+                            <th style="width: 120px;">Type</th>
+                            <th>Authors</th>
+                            <th>Journal/Publisher</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${pubs.slice(0, 200).map(pub => `
+                            <tr>
+                                <td>${pub.year || '-'}</td>
+                                <td class="pub-title">
+                                    <a href="${pub.nva_url}" target="_blank">${escapeHtml(pub.title)}</a>
+                                </td>
+                                <td><span class="pub-type ${pub.type.toLowerCase().replace(/[^a-z]/g, '')}">${pub.type}</span></td>
+                                <td class="pub-meta">${pub.contributors.slice(0, 3).map(c => c.name).join(', ')}${pub.contributors.length > 3 ? ' et al.' : ''}</td>
+                                <td class="pub-meta">${pub.journal || pub.publisher || '-'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                ${pubs.length > 200 ? `<p class="text-muted mt-1">Showing first 200 of ${pubs.length} publications</p>` : ''}
+            `;
+        }
+
+        function renderResearchersList() {
+            const container = document.getElementById('researchers-list');
+            const researchers = publicationsData.researchers.sort((a, b) => b.publication_count - a.publication_count);
+
+            container.innerHTML = researchers.map(r => `
+                <div class="researcher-card">
+                    <h4>${r.name}</h4>
+                    <div class="count">${r.publication_count}</div>
+                    <div class="text-muted">publications</div>
+                    ${r.error ? `<div class="text-error text-sm">${r.error}</div>` : ''}
+                </div>
+            `).join('');
+        }
+
+        function setupFilters() {
+            // Populate type filter
+            const typeSelect = document.getElementById('filter-type');
+            typeSelect.innerHTML = '<option value="">All types</option>';
+            Object.keys(publicationsData.publications_by_type).forEach(type => {
+                typeSelect.add(new Option(type, type));
+            });
+
+            // Populate year filter
+            const yearSelect = document.getElementById('filter-year');
+            yearSelect.innerHTML = '<option value="">All years</option>';
+            Object.keys(publicationsData.publications_by_year).sort().reverse().forEach(year => {
+                yearSelect.add(new Option(year, year));
+            });
+
+            // Add event listeners
+            document.getElementById('search-pub').addEventListener('input', applyFilters);
+            document.getElementById('filter-type').addEventListener('change', applyFilters);
+            document.getElementById('filter-year').addEventListener('change', applyFilters);
+        }
+
+        function applyFilters() {
+            renderPublicationsTable({
+                search: document.getElementById('search-pub').value,
+                type: document.getElementById('filter-type').value,
+                year: document.getElementById('filter-year').value,
+            });
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+    </script>
+</body>
+</html>

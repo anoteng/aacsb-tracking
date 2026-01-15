@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - AACSB Accreditation</title>
+    <link rel="stylesheet" href="/aacsb/static/css/style.css">
+</head>
+<body>
+    <nav class="nav">
+        <div class="container">
+            <a href="/aacsb/aol" class="nav-brand">AACSB Accreditation</a>
+            <ul class="nav-links">
+                <li><a href="/aacsb/aol">AOL</a></li>
+                <li><a href="/aacsb/research">Research</a></li>
+            </ul>
+            <div class="nav-user" id="nav-user">
+                <span>Loading...</span>
+            </div>
+        </div>
+    </nav>
+
+    <header class="page-header">
+        <div class="container">
+            <div>
+                <h1 class="page-title">Account Settings</h1>
+                <p class="page-subtitle">Manage your login methods and profile</p>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="grid grid-2">
+            <!-- Profile Info -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Profile</h2>
+                </div>
+                <div id="profile-info">
+                    <div class="loading"><div class="spinner"></div></div>
+                </div>
+            </div>
+
+            <!-- Password Settings -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Password</h2>
+                </div>
+                <p class="text-sm text-muted mb-2">
+                    Set a password to enable password login in addition to magic links.
+                </p>
+                <div id="password-status" class="mb-2"></div>
+                <form id="password-form">
+                    <div class="form-group">
+                        <label class="form-label">New Password</label>
+                        <input type="password" id="new-password" class="form-input" minlength="8" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Confirm Password</label>
+                        <input type="password" id="confirm-password" class="form-input" minlength="8" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Set Password</button>
+                </form>
+            </div>
+
+            <!-- Google Account -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Google Account</h2>
+                </div>
+                <p class="text-sm text-muted mb-2">
+                    Link your Google account for one-click sign in.
+                </p>
+                <div id="google-status">
+                    <div class="loading"><div class="spinner"></div></div>
+                </div>
+            </div>
+
+            <!-- Login Sessions -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Active Sessions</h2>
+                </div>
+                <p class="text-sm text-muted mb-2">
+                    Your currently active login sessions.
+                </p>
+                <div id="sessions-list">
+                    <p class="text-muted">Current session only</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/aacsb/static/aol/js/api.js"></script>
+    <script>
+        let user = null;
+
+        async function init() {
+            try {
+                user = await api.getCurrentUser();
+                renderNav();
+                renderProfile();
+                checkGoogleStatus();
+            } catch (error) {
+                window.location.href = '/aacsb/login';
+            }
+        }
+
+        function renderNav() {
+            document.getElementById('nav-user').innerHTML = `
+                <span>${user.firstname} ${user.lastname}</span>
+                <a href="/aacsb/aol/settings" class="btn btn-sm btn-outline" style="color: white; border-color: rgba(255,255,255,0.3);">
+                    Settings
+                </a>
+                <button onclick="logout()" class="btn btn-sm btn-outline" style="color: white; border-color: rgba(255,255,255,0.3);">
+                    Logout
+                </button>
+            `;
+
+            // Add Admin link for system admins
+            if (user.roles && user.roles.includes('system_admin')) {
+                const navLinks = document.querySelector('.nav-links');
+                if (navLinks && !navLinks.querySelector('a[href="/aacsb/admin"]')) {
+                    const adminLi = document.createElement('li');
+                    adminLi.innerHTML = '<a href="/aacsb/admin">Admin</a>';
+                    navLinks.appendChild(adminLi);
+                }
+            }
+        }
+
+        async function logout() {
+            await api.logout();
+            window.location.href = '/aacsb/login';
+        }
+
+        function renderProfile() {
+            document.getElementById('profile-info').innerHTML = `
+                <table style="width: 100%;">
+                    <tr>
+                        <td class="text-muted" style="width: 100px;">Name</td>
+                        <td><strong>${user.firstname} ${user.lastname}</strong></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Email</td>
+                        <td>${user.email}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Roles</td>
+                        <td>${user.roles.length > 0 ? user.roles.join(', ') : '<em>No roles assigned</em>'}</td>
+                    </tr>
+                </table>
+            `;
+
+            // Password status
+            document.getElementById('password-status').innerHTML = user.has_password
+                ? '<span class="text-success">Password is set</span>'
+                : '<span class="text-muted">No password set (using magic link only)</span>';
+        }
+
+        async function checkGoogleStatus() {
+            const container = document.getElementById('google-status');
+
+            try {
+                // Check if Google OAuth is configured
+                const response = await fetch('/aacsb/api/auth/google/status', { credentials: 'include' });
+                const data = await response.json();
+
+                if (!data.configured) {
+                    container.innerHTML = `
+                        <p class="text-muted">Google sign-in is not configured on this server.</p>
+                    `;
+                    return;
+                }
+
+                if (data.linked) {
+                    container.innerHTML = `
+                        <div class="alert alert-success">
+                            Google account linked: ${data.google_email || 'Connected'}
+                        </div>
+                        <button onclick="unlinkGoogle()" class="btn btn-outline btn-sm">Unlink Google Account</button>
+                    `;
+                } else {
+                    container.innerHTML = `
+                        <p class="mb-2">No Google account linked.</p>
+                        <a href="/aacsb/api/auth/google/link" class="btn btn-outline">
+                            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style="vertical-align: middle; margin-right: 8px;">
+                                <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
+                                <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/>
+                                <path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+                                <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+                            </svg>
+                            Link Google Account
+                        </a>
+                    `;
+                }
+            } catch (error) {
+                container.innerHTML = `<p class="text-muted">Could not check Google status.</p>`;
+            }
+        }
+
+        async function unlinkGoogle() {
+            if (!confirm('Are you sure you want to unlink your Google account?')) return;
+
+            try {
+                await api.request('/auth/google/unlink', { method: 'POST' });
+                checkGoogleStatus();
+            } catch (error) {
+                alert('Failed to unlink: ' + error.message);
+            }
+        }
+
+        // Password form
+        document.getElementById('password-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const newPassword = document.getElementById('new-password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+
+            if (newPassword !== confirmPassword) {
+                alert('Passwords do not match');
+                return;
+            }
+
+            if (newPassword.length < 8) {
+                alert('Password must be at least 8 characters');
+                return;
+            }
+
+            try {
+                await api.setPassword(newPassword);
+                alert('Password set successfully!');
+                document.getElementById('password-form').reset();
+                document.getElementById('password-status').innerHTML = '<span class="text-success">Password is set</span>';
+            } catch (error) {
+                alert('Failed to set password: ' + error.message);
+            }
+        });
+
+        init();
+    </script>
+</body>
+</html>
