@@ -195,6 +195,7 @@
             <ul class="nav-links">
                 <li><a href="/aacsb/aol">AOL</a></li>
                 <li><a href="/aacsb/research">Research</a></li>
+                <li><a href="/aacsb/qualifications">Qualifications</a></li>
                 <li><a href="/aacsb/admin" class="active">Admin</a></li>
             </ul>
             <div class="nav-user" id="nav-user">
@@ -229,6 +230,9 @@
         let users = [];
         let roles = [];
         let programmes = [];
+        let degrees = [];
+        let disciplines = [];
+        let responsibilities = [];
 
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
@@ -274,10 +278,13 @@
 
         async function loadData() {
             try {
-                const [usersRes, rolesRes, programmesRes] = await Promise.all([
+                const [usersRes, rolesRes, programmesRes, degreesRes, disciplinesRes, responsibilitiesRes] = await Promise.all([
                     fetch(`${API_BASE}/admin/users`, { credentials: 'include' }),
                     fetch(`${API_BASE}/admin/roles`, { credentials: 'include' }),
                     fetch(`${API_BASE}/admin/programmes`, { credentials: 'include' }),
+                    fetch(`${API_BASE}/admin/degrees`, { credentials: 'include' }),
+                    fetch(`${API_BASE}/admin/disciplines`, { credentials: 'include' }),
+                    fetch(`${API_BASE}/admin/responsibilities`, { credentials: 'include' }),
                 ]);
 
                 if (!usersRes.ok || !rolesRes.ok || !programmesRes.ok) {
@@ -287,9 +294,10 @@
                 users = await usersRes.json();
                 roles = await rolesRes.json();
                 programmes = await programmesRes.json();
-                console.log('Loaded users:', users);
-                console.log('Loaded roles:', roles);
-                console.log('Loaded programmes:', programmes);
+                degrees = degreesRes.ok ? await degreesRes.json() : [];
+                disciplines = disciplinesRes.ok ? await disciplinesRes.json() : [];
+                responsibilities = responsibilitiesRes.ok ? await responsibilitiesRes.json() : [];
+                console.log('Loaded users:', users.length);
             } catch (error) {
                 console.error('loadData error:', error);
                 document.getElementById('users-table-container').innerHTML = `
@@ -313,11 +321,10 @@
                         <tr>
                             <th>Name</th>
                             <th>Email</th>
-                            <th>Researcher ID</th>
+                            <th>Category</th>
+                            <th>Disciplines</th>
                             <th>Status</th>
-                            <th>Auth</th>
                             <th>Global Roles</th>
-                            <th>Programme Roles</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -326,31 +333,23 @@
                             <tr>
                                 <td><strong>${u.firstname} ${u.lastname}</strong></td>
                                 <td>${u.email}</td>
-                                <td>${u.researcher_id || '<span class="text-muted">-</span>'}</td>
+                                <td>
+                                    ${u.faculty_category ? `<span class="badge badge-role">${u.faculty_category}</span>` : '<span class="text-muted">-</span>'}
+                                    ${u.is_participating === false ? '<span class="badge badge-inactive" title="Not participating">NP</span>' : ''}
+                                </td>
+                                <td>
+                                    ${u.disciplines && u.disciplines.length > 0
+                                        ? u.disciplines.map(d => `<span class="badge badge-programme" title="${d.name}">${d.shorthand} ${d.percentage}%</span>`).join('')
+                                        : '<span class="text-muted">-</span>'}
+                                </td>
                                 <td>
                                     <span class="badge ${u.active ? 'badge-active' : 'badge-inactive'}">
                                         ${u.active ? 'Active' : 'Inactive'}
                                     </span>
                                 </td>
                                 <td>
-                                    <div class="auth-icons">
-                                        <svg class="auth-icon ${u.has_password ? 'active' : ''}" viewBox="0 0 24 24" fill="currentColor" title="Password">
-                                            <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
-                                        </svg>
-                                        <svg class="auth-icon ${u.has_google ? 'active' : ''}" viewBox="0 0 24 24" fill="currentColor" title="Google">
-                                            <path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/>
-                                        </svg>
-                                    </div>
-                                </td>
-                                <td>
                                     ${u.roles.map(r => `<span class="badge badge-role">${r.name}</span>`).join('')}
                                     ${u.roles.length === 0 ? '<span class="text-muted">None</span>' : ''}
-                                </td>
-                                <td>
-                                    ${u.programme_roles.map(pr => `
-                                        <span class="badge badge-programme">${pr.programme_code}: ${pr.role_name}</span>
-                                    `).join('')}
-                                    ${u.programme_roles.length === 0 ? '<span class="text-muted">None</span>' : ''}
                                 </td>
                                 <td class="actions-cell">
                                     <button class="btn btn-sm btn-outline btn-edit" data-user-id="${u.id}">Edit</button>
@@ -447,15 +446,9 @@
         }
 
         function showEditUserModal(userId) {
-            console.log('showEditUserModal called with userId:', userId);
             const user = users.find(u => u.id === userId);
-            console.log('Found user:', user);
-            if (!user) {
-                console.error('User not found in users array:', users);
-                return;
-            }
+            if (!user) return;
 
-            // Escape values for HTML
             const escapeHtml = (str) => {
                 if (!str) return '';
                 return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -463,15 +456,15 @@
 
             const modal = document.createElement('div');
             modal.className = 'modal-overlay active';
-            console.log('Creating modal for user:', user.firstname, user.lastname);
-            try {
             modal.innerHTML = `
-                <div class="modal">
+                <div class="modal" style="max-width: 800px;">
                     <div class="modal-header">
-                        <h2>Edit User</h2>
+                        <h2>Edit User - ${escapeHtml(user.firstname)} ${escapeHtml(user.lastname)}</h2>
                         <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
                     </div>
                     <div class="modal-body">
+                        <!-- Basic Info -->
+                        <h3 style="margin-top: 0;">Basic Information</h3>
                         <div class="form-row">
                             <div class="form-group">
                                 <label class="form-label">First Name</label>
@@ -482,34 +475,344 @@
                                 <input type="text" id="edit-lastname" class="form-input" value="${escapeHtml(user.lastname)}" required>
                             </div>
                         </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Email</label>
+                                <input type="email" id="edit-email" class="form-input" value="${escapeHtml(user.email)}" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" style="display: block; margin-top: 1.5rem;">
+                                    <input type="checkbox" id="edit-active" ${user.active ? 'checked' : ''}>
+                                    Active Account
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Researcher ID with Search -->
+                        <h3>Researcher Identity</h3>
                         <div class="form-group">
-                            <label class="form-label">Email</label>
-                            <input type="email" id="edit-email" class="form-input" value="${escapeHtml(user.email)}" required>
+                            <label class="form-label">Researcher ID (Cristin)</label>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <input type="text" id="edit-researcher-id" class="form-input" value="${escapeHtml(user.researcher_id || '')}" placeholder="e.g., 12345" style="flex: 1;">
+                                <button type="button" class="btn btn-outline" onclick="showResearcherSearch(${userId})">Search</button>
+                            </div>
+                        </div>
+
+                        <!-- Faculty Qualification -->
+                        <h3>Faculty Qualification</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Faculty Category</label>
+                                <select id="edit-faculty-category" class="form-input">
+                                    <option value="">-- Not Set --</option>
+                                    <option value="SA" ${user.faculty_category === 'SA' ? 'selected' : ''}>SA - Scholarly Academic</option>
+                                    <option value="PA" ${user.faculty_category === 'PA' ? 'selected' : ''}>PA - Practice Academic</option>
+                                    <option value="SP" ${user.faculty_category === 'SP' ? 'selected' : ''}>SP - Scholarly Practitioner</option>
+                                    <option value="IP" ${user.faculty_category === 'IP' ? 'selected' : ''}>IP - Instructional Practitioner</option>
+                                    <option value="Other" ${user.faculty_category === 'Other' ? 'selected' : ''}>Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" style="display: block; margin-top: 1.5rem;">
+                                    <input type="checkbox" id="edit-participating" ${user.is_participating !== false ? 'checked' : ''}>
+                                    Participating Faculty
+                                </label>
+                            </div>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Researcher ID (NVA/Cristin)</label>
-                            <input type="text" id="edit-researcher-id" class="form-input" value="${escapeHtml(user.researcher_id || '')}" placeholder="e.g., 12345">
+                            <label class="form-label">Participating Note</label>
+                            <input type="text" id="edit-participating-note" class="form-input" value="${escapeHtml(user.participating_note || '')}" placeholder="Optional explanation...">
                         </div>
-                        <div class="form-group">
-                            <label class="form-label">
-                                <input type="checkbox" id="edit-active" ${user.active ? 'checked' : ''}>
-                                Active
-                            </label>
+
+                        <!-- Degree -->
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Highest Degree</label>
+                                <select id="edit-degree" class="form-input">
+                                    <option value="">-- Not Set --</option>
+                                    ${degrees.map(d => `<option value="${d.id}" ${user.highest_degree && user.highest_degree.id === d.id ? 'selected' : ''}>${d.name}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Year Earned</label>
+                                <input type="number" id="edit-degree-year" class="form-input" value="${user.degree_year || ''}" placeholder="e.g., 2015" min="1950" max="2030">
+                            </div>
                         </div>
+
+                        <!-- Disciplines -->
+                        <h3>Discipline Allocation</h3>
+                        <div id="discipline-allocations">
+                            ${renderDisciplineAllocations(user)}
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline" onclick="addDisciplineRow(${userId})" style="margin-top: 0.5rem;">+ Add Discipline</button>
+                        <p class="text-muted" style="font-size: 0.8rem; margin-top: 0.25rem;">Percentages must sum to 100%</p>
+
+                        <!-- Responsibilities -->
+                        <h3>Professional Responsibilities</h3>
+                        <div id="user-responsibilities" style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                            ${responsibilities.map(r => `
+                                <label style="display: flex; align-items: center; gap: 0.25rem; background: #f1f5f9; padding: 0.25rem 0.5rem; border-radius: 4px;">
+                                    <input type="checkbox" class="resp-checkbox" value="${r.id}" ${user.responsibilities && user.responsibilities.find(ur => ur.id === r.id) ? 'checked' : ''}>
+                                    <span title="${r.name}">${r.shorthand}</span>
+                                </label>
+                            `).join('')}
+                            ${responsibilities.length === 0 ? '<span class="text-muted">No responsibilities configured</span>' : ''}
+                        </div>
+
+                        <!-- Teaching Productivity -->
+                        <h3>Teaching Productivity (ECTS Credits)</h3>
+                        <div id="teaching-productivity">
+                            ${renderTeachingProductivity(user)}
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline" onclick="addTeachingRow(${userId})" style="margin-top: 0.5rem;">+ Add Year</button>
                     </div>
                     <div class="modal-footer">
                         <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
-                        <button class="btn btn-primary" id="save-edit-btn">Save Changes</button>
+                        <button class="btn btn-primary" id="save-edit-btn">Save All Changes</button>
                     </div>
                 </div>
             `;
             document.body.appendChild(modal);
-            console.log('Modal appended to body');
+            document.getElementById('save-edit-btn').addEventListener('click', () => saveAllUserChanges(userId));
+        }
 
-            // Add event listener for save button
-            document.getElementById('save-edit-btn').addEventListener('click', () => updateUser(userId));
-            } catch (e) {
-                console.error('Error creating modal:', e);
+        function renderDisciplineAllocations(user) {
+            const allocs = user.disciplines || [];
+            if (allocs.length === 0) {
+                return '<div class="text-muted">No disciplines assigned</div>';
+            }
+            return allocs.map((d, idx) => `
+                <div class="form-row discipline-row" style="margin-bottom: 0.5rem;">
+                    <select class="form-input disc-select" style="flex: 2;">
+                        ${disciplines.map(disc => `<option value="${disc.id}" ${disc.id === d.id ? 'selected' : ''}>${disc.shorthand} - ${disc.name}</option>`).join('')}
+                    </select>
+                    <input type="number" class="form-input disc-pct" value="${d.percentage}" min="0" max="100" step="0.01" style="flex: 1;" placeholder="%">
+                    <button type="button" class="btn btn-sm btn-outline" onclick="this.closest('.discipline-row').remove()" style="color: #ef4444;">&times;</button>
+                </div>
+            `).join('');
+        }
+
+        function addDisciplineRow(userId) {
+            const container = document.getElementById('discipline-allocations');
+            if (container.querySelector('.text-muted')) {
+                container.innerHTML = '';
+            }
+            const row = document.createElement('div');
+            row.className = 'form-row discipline-row';
+            row.style.marginBottom = '0.5rem';
+            row.innerHTML = `
+                <select class="form-input disc-select" style="flex: 2;">
+                    <option value="">-- Select --</option>
+                    ${disciplines.map(d => `<option value="${d.id}">${d.shorthand} - ${d.name}</option>`).join('')}
+                </select>
+                <input type="number" class="form-input disc-pct" value="" min="0" max="100" step="0.01" style="flex: 1;" placeholder="%">
+                <button type="button" class="btn btn-sm btn-outline" onclick="this.closest('.discipline-row').remove()" style="color: #ef4444;">&times;</button>
+            `;
+            container.appendChild(row);
+        }
+
+        function renderTeachingProductivity(user) {
+            const entries = user.teaching_productivity || [];
+            if (entries.length === 0) {
+                return '<div class="text-muted">No teaching productivity entries</div>';
+            }
+            return entries.map(e => `
+                <div class="form-row teaching-row" style="margin-bottom: 0.5rem;">
+                    <input type="text" class="form-input tp-year" value="${e.academic_year}" placeholder="e.g., 2024-2025" style="flex: 1;">
+                    <input type="number" class="form-input tp-credits" value="${e.credits}" min="0" step="0.01" style="flex: 1;" placeholder="Credits">
+                    <button type="button" class="btn btn-sm btn-outline" onclick="this.closest('.teaching-row').remove()" style="color: #ef4444;">&times;</button>
+                </div>
+            `).join('');
+        }
+
+        function addTeachingRow(userId) {
+            const container = document.getElementById('teaching-productivity');
+            if (container.querySelector('.text-muted')) {
+                container.innerHTML = '';
+            }
+            const currentYear = 2025;
+            const row = document.createElement('div');
+            row.className = 'form-row teaching-row';
+            row.style.marginBottom = '0.5rem';
+            row.innerHTML = `
+                <input type="text" class="form-input tp-year" value="${currentYear-1}-${currentYear}" placeholder="e.g., 2024-2025" style="flex: 1;">
+                <input type="number" class="form-input tp-credits" value="" min="0" step="0.01" style="flex: 1;" placeholder="Credits">
+                <button type="button" class="btn btn-sm btn-outline" onclick="this.closest('.teaching-row').remove()" style="color: #ef4444;">&times;</button>
+            `;
+            container.appendChild(row);
+        }
+
+        async function showResearcherSearch(userId) {
+            const user = users.find(u => u.id === userId);
+            const userName = user ? `${user.firstname} ${user.lastname}` : '';
+
+            const searchModal = document.createElement('div');
+            searchModal.className = 'modal-overlay active';
+            searchModal.id = 'researcher-search-modal';
+            searchModal.innerHTML = `
+                <div class="modal" style="max-width: 600px;">
+                    <div class="modal-header">
+                        <h2>Search Researcher</h2>
+                        <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label class="form-label">Search by name</label>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <input type="text" id="researcher-search-input" class="form-input" value="${userName}" style="flex: 1;">
+                                <button class="btn btn-primary" onclick="doResearcherSearch()">Search</button>
+                            </div>
+                        </div>
+                        <div id="researcher-search-results" style="margin-top: 1rem;"></div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(searchModal);
+            document.getElementById('researcher-search-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') doResearcherSearch();
+            });
+
+            // Auto-search if we have a name
+            if (userName.length >= 2) {
+                doResearcherSearch();
+            }
+        }
+
+        async function doResearcherSearch() {
+            const query = document.getElementById('researcher-search-input').value;
+            if (query.length < 2) {
+                alert('Please enter at least 2 characters');
+                return;
+            }
+            const resultsDiv = document.getElementById('researcher-search-results');
+            resultsDiv.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/nva/search-persons?name=${encodeURIComponent(query)}`, { credentials: 'include' });
+                if (!response.ok) throw new Error('Search failed');
+                const results = await response.json();
+
+                if (results.length === 0) {
+                    resultsDiv.innerHTML = '<p class="text-muted">No researchers found</p>';
+                    return;
+                }
+
+                resultsDiv.innerHTML = `
+                    <table class="user-table" style="font-size: 0.9rem;">
+                        <thead><tr><th>Name</th><th>ID</th><th>Affiliation</th><th></th></tr></thead>
+                        <tbody>
+                            ${results.map(r => `
+                                <tr>
+                                    <td>${r.full_name}</td>
+                                    <td>${r.id}</td>
+                                    <td>${r.affiliations.slice(0, 2).join(', ') || '-'}</td>
+                                    <td><button class="btn btn-sm btn-primary" onclick="selectResearcher('${r.id}')">Select</button></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            } catch (error) {
+                resultsDiv.innerHTML = `<p class="text-error">Error: ${error.message}</p>`;
+            }
+        }
+
+        function selectResearcher(researcherId) {
+            document.getElementById('edit-researcher-id').value = researcherId;
+            document.getElementById('researcher-search-modal').remove();
+        }
+
+        async function saveAllUserChanges(userId) {
+            try {
+                // Collect basic user data
+                const userData = {
+                    firstname: document.getElementById('edit-firstname').value,
+                    lastname: document.getElementById('edit-lastname').value,
+                    email: document.getElementById('edit-email').value,
+                    active: document.getElementById('edit-active').checked,
+                    researcher_id: document.getElementById('edit-researcher-id').value || '',
+                    faculty_category: document.getElementById('edit-faculty-category').value || '',
+                    is_participating: document.getElementById('edit-participating').checked,
+                    participating_note: document.getElementById('edit-participating-note').value || '',
+                    highest_degree_id: parseInt(document.getElementById('edit-degree').value) || 0,
+                    degree_year: parseInt(document.getElementById('edit-degree-year').value) || 0,
+                };
+
+                // Update basic user data
+                const userRes = await fetch(`${API_BASE}/admin/users/${userId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify(userData),
+                });
+                if (!userRes.ok) {
+                    const err = await userRes.json();
+                    throw new Error(err.detail || 'Failed to update user');
+                }
+
+                // Collect discipline allocations
+                const discRows = document.querySelectorAll('.discipline-row');
+                const allocations = [];
+                discRows.forEach(row => {
+                    const discId = row.querySelector('.disc-select').value;
+                    const pct = row.querySelector('.disc-pct').value;
+                    if (discId && pct) {
+                        allocations.push({ discipline_id: parseInt(discId), percentage: parseFloat(pct) });
+                    }
+                });
+
+                // Validate discipline percentages
+                if (allocations.length > 0) {
+                    const total = allocations.reduce((sum, a) => sum + a.percentage, 0);
+                    if (Math.abs(total - 100) > 0.1) {
+                        throw new Error(`Discipline percentages must sum to 100% (currently ${total}%)`);
+                    }
+                }
+
+                // Update disciplines
+                await fetch(`${API_BASE}/admin/users/${userId}/disciplines`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify(allocations),
+                });
+
+                // Collect responsibilities
+                const respCheckboxes = document.querySelectorAll('.resp-checkbox:checked');
+                const respIds = Array.from(respCheckboxes).map(cb => parseInt(cb.value));
+
+                // Update responsibilities
+                await fetch(`${API_BASE}/admin/users/${userId}/responsibilities`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify(respIds),
+                });
+
+                // Collect teaching productivity
+                const tpRows = document.querySelectorAll('.teaching-row');
+                const tpEntries = [];
+                tpRows.forEach(row => {
+                    const year = row.querySelector('.tp-year').value;
+                    const credits = row.querySelector('.tp-credits').value;
+                    if (year && credits) {
+                        tpEntries.push({ academic_year: year, credits: parseFloat(credits) });
+                    }
+                });
+
+                // Update teaching productivity
+                await fetch(`${API_BASE}/admin/users/${userId}/teaching-productivity`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify(tpEntries),
+                });
+
+                // Refresh and close
+                await refreshUser(userId);
+                document.querySelector('.modal-overlay').remove();
+            } catch (error) {
+                alert(error.message);
             }
         }
 

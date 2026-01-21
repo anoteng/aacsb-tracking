@@ -156,6 +156,55 @@ class NVAService:
             response.raise_for_status()
             return response.json()
 
+    async def search_persons(self, name: str, institution: str = "nmbu") -> list[dict]:
+        """
+        Search for persons/researchers by name using Cristin API.
+
+        Args:
+            name: Name to search for
+            institution: Institution filter (default: nmbu)
+
+        Returns:
+            List of person records with id, name, and affiliation
+        """
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.get(
+                "https://api.cristin.no/v2/persons",
+                params={
+                    "name": name,
+                    "institution": institution,
+                    "per_page": 20,
+                },
+                headers={"Accept": "application/json"},
+            )
+            response.raise_for_status()
+            persons = response.json()
+
+        results = []
+        for person in persons:
+            # Extract person ID from URL
+            person_id = person.get("cristin_person_id")
+
+            # Get affiliations
+            affiliations = []
+            for aff in person.get("affiliations", []):
+                if aff.get("active"):
+                    unit = aff.get("unit", {})
+                    unit_name = unit.get("unit_name", {})
+                    affiliations.append(
+                        unit_name.get("en") or unit_name.get("nb") or "Unknown"
+                    )
+
+            results.append({
+                "id": str(person_id),
+                "first_name": person.get("first_name", ""),
+                "surname": person.get("surname", ""),
+                "full_name": f"{person.get('first_name', '')} {person.get('surname', '')}".strip(),
+                "affiliations": affiliations,
+            })
+
+        return results
+
     def parse_publication(self, pub: dict) -> dict:
         """Parse NVA publication data into a simplified format."""
         entity = pub.get("entityDescription", {})
@@ -177,16 +226,70 @@ class NVAService:
         pub_date = entity.get("publicationDate", {})
         year = pub_date.get("year")
 
-        # Determine publication type
-        pub_type = pub_instance.get("type", "Unknown")
-        if "Journal" in pub_type:
-            pub_type = "Journal Article"
-        elif "Book" in pub_type:
-            pub_type = "Book/Chapter"
-        elif "Report" in pub_type:
-            pub_type = "Report"
-        elif "Degree" in pub_type:
-            pub_type = "Thesis"
+        # Get raw type from NVA
+        raw_type = pub_instance.get("type", "Unknown")
+
+        # Map NVA publication types to display categories
+        # NVA types: https://api.nva.unit.no/publication-channels-v2/
+        TYPE_MAPPING = {
+            # Peer-reviewed journal articles
+            "AcademicArticle": "Journal Article",
+            "AcademicLiteratureReview": "Journal Article",
+
+            # Other journal content (not necessarily peer-reviewed)
+            "JournalCorrigendum": "Journal Corrigendum",
+            "JournalLeader": "Editorial",
+            "JournalReview": "Book Review",
+            "JournalLetter": "Letter to Editor",
+            "JournalIssue": "Journal Issue",
+
+            # Chronicles/Feature articles (kronikk, newspaper commentaries)
+            "FeatureArticle": "Chronicle/Feature",
+
+            # Conference papers
+            "ConferencePoster": "Conference Poster",
+            "ConferenceLecture": "Conference Lecture",
+            "ConferenceAbstract": "Conference Abstract",
+
+            # Books
+            "BookMonograph": "Book",
+            "BookAnthology": "Edited Book",
+            "AcademicChapter": "Book Chapter",
+            "NonFictionChapter": "Book Chapter",
+            "EncyclopediaChapter": "Encyclopedia Entry",
+            "Introduction": "Book Introduction",
+            "ExhibitionCatalogChapter": "Exhibition Catalog",
+            "Textbook": "Textbook",
+            "NonFictionMonograph": "Non-fiction Book",
+            "PopularScienceMonograph": "Popular Science Book",
+
+            # Reports
+            "ReportBasic": "Report",
+            "ReportResearch": "Research Report",
+            "ReportPolicy": "Policy Report",
+            "ReportWorkingPaper": "Working Paper",
+
+            # Theses
+            "DegreeBachelor": "Bachelor Thesis",
+            "DegreeMaster": "Master Thesis",
+            "DegreePhd": "PhD Thesis",
+            "DegreeLicentiate": "Licentiate Thesis",
+
+            # Media and other
+            "MediaContribution": "Media Contribution",
+            "MediaFeatureArticle": "Media Feature",
+            "MediaInterview": "Media Interview",
+            "MediaReaderOpinion": "Reader Opinion",
+            "MediaBlogPost": "Blog Post",
+            "MediaPodcast": "Podcast",
+
+            # Other
+            "DataManagementPlan": "Data Management Plan",
+            "Dataset": "Dataset",
+            "OtherStudentWork": "Student Work",
+        }
+
+        pub_type = TYPE_MAPPING.get(raw_type, raw_type)  # Use raw type if not mapped
 
         # Get journal/publisher info
         journal = None
@@ -200,6 +303,7 @@ class NVAService:
             "id": pub.get("identifier"),
             "title": entity.get("mainTitle", "Untitled"),
             "type": pub_type,
+            "raw_type": raw_type,  # Include raw type for debugging
             "year": year,
             "contributors": contributors,
             "journal": journal,

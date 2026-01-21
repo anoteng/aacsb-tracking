@@ -64,6 +64,30 @@
             font-weight: 600;
             color: #475569;
         }
+        .pub-table th.sortable {
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            padding-right: 1.5rem;
+        }
+        .pub-table th.sortable:hover {
+            background: #f1f5f9;
+        }
+        .pub-table th.sortable::after {
+            content: '⇅';
+            position: absolute;
+            right: 0.5rem;
+            opacity: 0.3;
+            font-size: 0.8rem;
+        }
+        .pub-table th.sortable.asc::after {
+            content: '↑';
+            opacity: 1;
+        }
+        .pub-table th.sortable.desc::after {
+            content: '↓';
+            opacity: 1;
+        }
         .pub-table tr:hover {
             background: #f8fafc;
         }
@@ -91,10 +115,13 @@
             background: #e0f2fe;
             color: #0369a1;
         }
-        .pub-type.journal { background: #dbeafe; color: #1e40af; }
-        .pub-type.book { background: #dcfce7; color: #166534; }
-        .pub-type.report { background: #fef3c7; color: #92400e; }
-        .pub-type.thesis { background: #f3e8ff; color: #7c3aed; }
+        .pub-type.journalarticle { background: #dbeafe; color: #1e40af; }
+        .pub-type.book, .pub-type.bookchapter, .pub-type.editedbook { background: #dcfce7; color: #166534; }
+        .pub-type.report, .pub-type.researchreport, .pub-type.workingpaper { background: #fef3c7; color: #92400e; }
+        .pub-type.phdthesis, .pub-type.masterthesis, .pub-type.bachelorthesis { background: #f3e8ff; color: #7c3aed; }
+        .pub-type.chroniclefeature, .pub-type.mediacontribution { background: #fce7f3; color: #9d174d; }
+        .pub-type.conferencelecture, .pub-type.conferenceposter { background: #fed7aa; color: #c2410c; }
+        .pub-type.editorial, .pub-type.bookreview, .pub-type.lettertoeditor { background: #e5e7eb; color: #374151; }
         .chart-container {
             background: white;
             padding: 1.5rem;
@@ -192,6 +219,8 @@
             <ul class="nav-links">
                 <li><a href="/aacsb/aol">AOL</a></li>
                 <li><a href="/aacsb/research" class="active">Research</a></li>
+                <li><a href="/aacsb/qualifications">Qualifications</a></li>
+                <li><a href="/aacsb/admin">Admin</a></li>
             </ul>
             <div class="nav-user" id="nav-user">
                 <span>Loading...</span>
@@ -291,6 +320,7 @@
         const API_BASE = '/aacsb/api';
         let currentUser = null;
         let publicationsData = null;
+        let sortState = { column: 'year', direction: 'desc' };
 
         document.addEventListener('DOMContentLoaded', async () => {
             await checkAuth();
@@ -405,6 +435,7 @@
             document.getElementById('stat-total').textContent = publicationsData.total_publications;
             document.getElementById('stat-researchers').textContent = publicationsData.total_researchers;
 
+            // Count peer-reviewed journal articles (excludes chronicles, editorials, etc.)
             const journalCount = publicationsData.publications_by_type['Journal Article'] || 0;
             document.getElementById('stat-journals').textContent = journalCount;
 
@@ -457,7 +488,7 @@
         }
 
         function renderPublicationsTable(filter = {}) {
-            let pubs = publicationsData.publications;
+            let pubs = [...publicationsData.publications];
 
             // Apply filters
             if (filter.search) {
@@ -474,16 +505,19 @@
                 pubs = pubs.filter(p => p.year == filter.year);
             }
 
+            // Apply sorting
+            pubs = sortPublications(pubs, sortState.column, sortState.direction);
+
             const container = document.getElementById('publications-table');
             container.innerHTML = `
                 <table class="pub-table">
                     <thead>
                         <tr>
-                            <th style="width: 60px;">Year</th>
-                            <th>Title</th>
-                            <th style="width: 120px;">Type</th>
-                            <th>Authors</th>
-                            <th>Journal/Publisher</th>
+                            <th class="sortable ${sortState.column === 'year' ? sortState.direction : ''}" data-sort="year" style="width: 60px;">Year</th>
+                            <th class="sortable ${sortState.column === 'title' ? sortState.direction : ''}" data-sort="title">Title</th>
+                            <th class="sortable ${sortState.column === 'type' ? sortState.direction : ''}" data-sort="type" style="width: 140px;">Type</th>
+                            <th class="sortable ${sortState.column === 'authors' ? sortState.direction : ''}" data-sort="authors">Authors</th>
+                            <th class="sortable ${sortState.column === 'journal' ? sortState.direction : ''}" data-sort="journal">Journal/Publisher</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -502,6 +536,52 @@
                 </table>
                 ${pubs.length > 200 ? `<p class="text-muted mt-1">Showing first 200 of ${pubs.length} publications</p>` : ''}
             `;
+
+            // Add click handlers for sorting
+            container.querySelectorAll('th.sortable').forEach(th => {
+                th.addEventListener('click', () => handleSort(th.dataset.sort));
+            });
+        }
+
+        function sortPublications(pubs, column, direction) {
+            const mult = direction === 'asc' ? 1 : -1;
+            return pubs.sort((a, b) => {
+                let valA, valB;
+                switch (column) {
+                    case 'year':
+                        valA = a.year || 0;
+                        valB = b.year || 0;
+                        return (valA - valB) * mult;
+                    case 'title':
+                        valA = (a.title || '').toLowerCase();
+                        valB = (b.title || '').toLowerCase();
+                        return valA.localeCompare(valB) * mult;
+                    case 'type':
+                        valA = (a.type || '').toLowerCase();
+                        valB = (b.type || '').toLowerCase();
+                        return valA.localeCompare(valB) * mult;
+                    case 'authors':
+                        valA = a.contributors[0]?.name || '';
+                        valB = b.contributors[0]?.name || '';
+                        return valA.localeCompare(valB) * mult;
+                    case 'journal':
+                        valA = (a.journal || a.publisher || '').toLowerCase();
+                        valB = (b.journal || b.publisher || '').toLowerCase();
+                        return valA.localeCompare(valB) * mult;
+                    default:
+                        return 0;
+                }
+            });
+        }
+
+        function handleSort(column) {
+            if (sortState.column === column) {
+                sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortState.column = column;
+                sortState.direction = column === 'year' ? 'desc' : 'asc';
+            }
+            applyFilters();
         }
 
         function renderResearchersList() {

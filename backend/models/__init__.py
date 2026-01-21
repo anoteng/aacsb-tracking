@@ -1,4 +1,4 @@
-from .user import User, Role, UserRole, UserProgrammeRole, Session, AuthToken
+from .user import User, Role, UserRole, UserProgrammeRole, Session, AuthToken, FacultyCategory
 from .programme import StudyProgramme, Course, ProgrammeCourse, CourseCoordinator
 from .aol import (
     LearningGoal,
@@ -17,18 +17,37 @@ from .aol import (
     CourseAssessmentMethod,
     CourseTechnology,
 )
+from .research import (
+    Degree,
+    Discipline,
+    ProfessionalResponsibility,
+    UserDiscipline,
+    UserResponsibility,
+    UserTeachingProductivity,
+    IntellectualContribution,
+    UserIntellectualContribution,
+    ProfessionalActivity,
+    PublicationType,
+    PortfolioCategory,
+    ExemptionType,
+    UserExemption,
+)
 
 __all__ = [
+    # User models
     "User",
     "Role",
     "UserRole",
     "UserProgrammeRole",
     "Session",
     "AuthToken",
+    "FacultyCategory",
+    # Programme models
     "StudyProgramme",
     "Course",
     "ProgrammeCourse",
     "CourseCoordinator",
+    # AOL models
     "LearningGoal",
     "GoalCategory",
     "GoalCourseMatrix",
@@ -44,4 +63,18 @@ __all__ = [
     "CourseLearningMethod",
     "CourseAssessmentMethod",
     "CourseTechnology",
+    # Research models
+    "Degree",
+    "Discipline",
+    "ProfessionalResponsibility",
+    "UserDiscipline",
+    "UserResponsibility",
+    "UserTeachingProductivity",
+    "IntellectualContribution",
+    "UserIntellectualContribution",
+    "ProfessionalActivity",
+    "PublicationType",
+    "PortfolioCategory",
+    "ExemptionType",
+    "UserExemption",
 ]

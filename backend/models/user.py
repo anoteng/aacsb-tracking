@@ -1,7 +1,16 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text, Enum, DECIMAL
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
+import enum
+
+
+class FacultyCategory(str, enum.Enum):
+    SA = "SA"
+    PA = "PA"
+    SP = "SP"
+    IP = "IP"
+    Other = "Other"
 
 
 class User(Base):
@@ -18,11 +27,25 @@ class User(Base):
     last_login = Column(DateTime)
     active = Column(Boolean, default=True)
 
+    # Faculty qualification fields
+    faculty_category = Column(Enum(FacultyCategory), default=None)
+    is_participating = Column(Boolean, default=True)
+    participating_note = Column(Text)
+    highest_degree_id = Column(Integer, ForeignKey("degrees.id"), default=None)
+    degree_year = Column(Integer, default=None)
+
     # Relationships
     roles = relationship("UserRole", back_populates="user", foreign_keys="UserRole.uuid")
     programme_roles = relationship("UserProgrammeRole", back_populates="user", foreign_keys="UserProgrammeRole.user_id")
     sessions = relationship("Session", back_populates="user", foreign_keys="Session.user_id")
     goal_assignments = relationship("GoalStaffAssignment", back_populates="user", foreign_keys="GoalStaffAssignment.user_id")
+    highest_degree = relationship("Degree", foreign_keys=[highest_degree_id])
+    disciplines = relationship("UserDiscipline", back_populates="user", cascade="all, delete-orphan")
+    responsibilities = relationship("UserResponsibility", back_populates="user", cascade="all, delete-orphan")
+    teaching_productivity = relationship("UserTeachingProductivity", back_populates="user", cascade="all, delete-orphan")
+    intellectual_contributions = relationship("UserIntellectualContribution", back_populates="user", cascade="all, delete-orphan")
+    professional_activities = relationship("ProfessionalActivity", back_populates="user", cascade="all, delete-orphan")
+    exemptions = relationship("UserExemption", back_populates="user", foreign_keys="UserExemption.user_id", cascade="all, delete-orphan")
 
     @property
     def full_name(self):
