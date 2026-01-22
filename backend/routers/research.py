@@ -896,10 +896,18 @@ async def delete_user_activity_admin(
 
 @router.get("/faculty-overview")
 async def get_faculty_overview(
+    year_from: Optional[int] = Query(default=None, description="Start year of evaluation period"),
+    year_to: Optional[int] = Query(default=None, description="End year of evaluation period"),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("system_admin", "dean", "vice_dean")),
 ):
     """Get qualification overview for all faculty. Admin/Dean only."""
+    # Use provided years or defaults
+    if not year_to:
+        year_to = REFERENCE_YEAR
+    if not year_from:
+        year_from = year_to - 5  # 6 year window (inclusive)
+
     # Get all active users with faculty category
     faculty = (
         db.query(User)
@@ -923,7 +931,7 @@ async def get_faculty_overview(
         other_ic_count = 0
 
         for uic in user.intellectual_contributions:
-            if uic.contribution.year and uic.contribution.year >= REFERENCE_YEAR - 6:
+            if uic.contribution.year and year_from <= uic.contribution.year <= year_to:
                 if uic.publication_type == PublicationType.prj_article:
                     prj_count += 1
                 elif uic.publication_type == PublicationType.peer_reviewed_other:
@@ -936,11 +944,11 @@ async def get_faculty_overview(
         # Count activities in period
         activity_count = sum(
             1 for a in user.professional_activities
-            if a.year >= REFERENCE_YEAR - 6
+            if year_from <= a.year <= year_to
         )
 
         # Get active exemptions
-        active_exemptions = get_active_exemptions(user, REFERENCE_YEAR - 6, REFERENCE_YEAR)
+        active_exemptions = get_active_exemptions(user, year_from, year_to)
 
         # Check for full exemption
         has_full_exemption = False
@@ -948,7 +956,7 @@ async def get_faculty_overview(
             ex_type = exemption.exemption_type
             if ex_type.grants_full_exemption:
                 if ex_type.years_after_degree and user.degree_year:
-                    years_since = REFERENCE_YEAR - user.degree_year
+                    years_since = year_to - user.degree_year
                     if years_since <= ex_type.years_after_degree:
                         has_full_exemption = True
                         break
@@ -1020,8 +1028,8 @@ async def get_faculty_overview(
 
     return {
         "period": {
-            "year_from": REFERENCE_YEAR - 6,
-            "year_to": REFERENCE_YEAR,
+            "year_from": year_from,
+            "year_to": year_to,
         },
         "summary": {
             "total_faculty": total_faculty,
@@ -1030,6 +1038,218 @@ async def get_faculty_overview(
             "by_category": by_category,
         },
         "faculty": overview,
+    }
+
+
+# ============================================
+# Researcher Timeline View
+# ============================================
+
+@router.get("/admin/user/{user_id}/timeline")
+async def get_researcher_timeline(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("system_admin", "dean", "vice_dean")),
+):
+    """
+    Get a researcher's qualifying activities timeline.
+    Shows ICs and activities by year to visualize qualification status over time.
+    """
+    user = (
+        db.query(User)
+        .options(
+            joinedload(User.disciplines).joinedload(UserDiscipline.discipline),
+            joinedload(User.highest_degree),
+            joinedload(User.intellectual_contributions).joinedload(UserIntellectualContribution.contribution),
+            joinedload(User.professional_activities),
+            joinedload(User.exemptions).joinedload(UserExemption.exemption_type),
+        )
+        .filter(User.uuid == user_id)
+        .first()
+    )
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Collect all ICs with their years and categorizations
+    ics_by_year = {}
+    for uic in user.intellectual_contributions:
+        year = uic.contribution.year
+        if not year:
+            continue
+        if year not in ics_by_year:
+            ics_by_year[year] = []
+        ics_by_year[year].append({
+            "id": uic.contribution.id,
+            "nva_id": uic.contribution.nva_id,
+            "title": uic.contribution.title,
+            "publication_type": uic.publication_type.value if uic.publication_type else None,
+            "portfolio_category": uic.portfolio_category.value if uic.portfolio_category else None,
+            "is_prj": uic.publication_type == PublicationType.prj_article if uic.publication_type else False,
+        })
+
+    # Collect activities by year
+    activities_by_year = {}
+    for activity in user.professional_activities:
+        year = activity.year
+        if year not in activities_by_year:
+            activities_by_year[year] = []
+        activities_by_year[year].append({
+            "id": activity.id,
+            "activity_type": activity.activity_type,
+            "description": activity.description,
+        })
+
+    # Determine year range (all years with any activity, plus current year context)
+    all_years = set(ics_by_year.keys()) | set(activities_by_year.keys())
+    if not all_years:
+        all_years = {REFERENCE_YEAR}
+    min_year = min(all_years)
+    max_year = max(max(all_years), REFERENCE_YEAR)
+
+    # Build timeline data for each year
+    timeline = []
+    for year in range(min_year, max_year + 1):
+        year_ics = ics_by_year.get(year, [])
+        year_activities = activities_by_year.get(year, [])
+
+        prj_count = sum(1 for ic in year_ics if ic.get("is_prj"))
+        other_ic_count = len(year_ics) - prj_count
+
+        timeline.append({
+            "year": year,
+            "ics": year_ics,
+            "ic_count": len(year_ics),
+            "prj_count": prj_count,
+            "other_ic_count": other_ic_count,
+            "activities": year_activities,
+            "activity_count": len(year_activities),
+        })
+
+    # Calculate rolling 6-year windows starting from various years
+    # This helps identify when someone might fall out of qualification
+    rolling_windows = []
+    for end_year in range(max(min_year + 5, REFERENCE_YEAR - 2), max_year + 3):
+        start_year = end_year - 5  # 6-year window
+
+        window_prj = 0
+        window_ics = 0
+        window_activities = 0
+
+        for year in range(start_year, end_year + 1):
+            year_data = ics_by_year.get(year, [])
+            window_prj += sum(1 for ic in year_data if ic.get("is_prj"))
+            window_ics += len(year_data)
+            window_activities += len(activities_by_year.get(year, []))
+
+        # Get active exemptions for this window
+        active_exemptions = get_active_exemptions(user, start_year, end_year)
+        has_full_exemption = False
+        ic_reduction = 0
+        prj_reduction = 0
+        activity_reduction = 0
+
+        for exemption in active_exemptions:
+            ex_type = exemption.exemption_type
+            if ex_type.grants_full_exemption:
+                if ex_type.years_after_degree and user.degree_year:
+                    years_since = end_year - user.degree_year
+                    if years_since <= ex_type.years_after_degree:
+                        has_full_exemption = True
+                elif not ex_type.years_after_degree:
+                    has_full_exemption = True
+            if ex_type.reduces_ic_requirement:
+                ic_reduction += ex_type.ic_reduction
+            if ex_type.reduces_prj_requirement:
+                prj_reduction += ex_type.prj_reduction
+            if ex_type.reduces_activity_requirement:
+                activity_reduction += ex_type.activity_reduction
+
+        # Check requirements based on faculty category
+        category = user.faculty_category
+        meets_requirements = True
+        status_notes = []
+
+        if has_full_exemption:
+            meets_requirements = True
+            status_notes.append("Full exemption applies")
+        elif category == FacultyCategory.SA:
+            prj_required = max(0, 3 - prj_reduction)
+            ic_required = max(0, 6 - ic_reduction)
+            if window_prj < prj_required:
+                meets_requirements = False
+                status_notes.append(f"PRJ: {window_prj}/{prj_required}")
+            if window_ics < ic_required:
+                meets_requirements = False
+                status_notes.append(f"IC: {window_ics}/{ic_required}")
+        elif category == FacultyCategory.PA:
+            activities_required = max(0, 6 - activity_reduction)
+            if window_activities < activities_required:
+                meets_requirements = False
+                status_notes.append(f"Activities: {window_activities}/{activities_required}")
+        elif category == FacultyCategory.SP:
+            prj_required = max(0, 1 - prj_reduction)
+            ic_required = max(0, 5 - ic_reduction)
+            if window_prj < prj_required:
+                meets_requirements = False
+                status_notes.append(f"PRJ: {window_prj}/{prj_required}")
+            if window_ics < ic_required:
+                meets_requirements = False
+                status_notes.append(f"IC: {window_ics}/{ic_required}")
+        elif category == FacultyCategory.IP:
+            activities_required = max(0, 6 - activity_reduction)
+            if window_activities < activities_required:
+                meets_requirements = False
+                status_notes.append(f"Activities: {window_activities}/{activities_required}")
+
+        rolling_windows.append({
+            "period": f"{start_year}-{end_year}",
+            "year_from": start_year,
+            "year_to": end_year,
+            "prj_count": window_prj,
+            "total_ics": window_ics,
+            "activities": window_activities,
+            "meets_requirements": meets_requirements,
+            "status_notes": status_notes,
+            "is_current": start_year == REFERENCE_YEAR - 5 and end_year == REFERENCE_YEAR,
+            "is_future": end_year > REFERENCE_YEAR,
+        })
+
+    # Find potential risk periods
+    risk_periods = [w for w in rolling_windows if not w["meets_requirements"] and w["is_future"]]
+
+    return {
+        "user": {
+            "id": user.uuid,
+            "name": f"{user.firstname} {user.lastname}",
+            "email": user.email,
+            "faculty_category": user.faculty_category.value if user.faculty_category else None,
+            "highest_degree": user.highest_degree.name if user.highest_degree else None,
+            "degree_year": user.degree_year,
+            "disciplines": [
+                {"shorthand": d.discipline.shorthand, "percentage": float(d.percentage)}
+                for d in user.disciplines
+            ],
+        },
+        "exemptions": [
+            {
+                "id": e.id,
+                "type": e.exemption_type.name,
+                "year_from": e.year_from,
+                "year_to": e.year_to,
+                "grants_full_exemption": e.exemption_type.grants_full_exemption,
+            }
+            for e in user.exemptions
+        ],
+        "timeline": timeline,
+        "rolling_windows": rolling_windows,
+        "at_risk": len(risk_periods) > 0,
+        "risk_periods": risk_periods,
+        "totals": {
+            "total_ics": sum(len(y.get("ics", [])) for y in timeline),
+            "total_prj": sum(y.get("prj_count", 0) for y in timeline),
+            "total_activities": sum(y.get("activity_count", 0) for y in timeline),
+        },
     }
 
 

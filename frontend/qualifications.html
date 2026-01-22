@@ -300,6 +300,113 @@
             color: #64748b;
             font-size: 0.9rem;
         }
+        /* Period selector */
+        .period-selector {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .period-selector label {
+            font-weight: 500;
+            color: #475569;
+        }
+        .period-selector select {
+            padding: 0.5rem 1rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            background: white;
+        }
+        /* Timeline modal styles */
+        .timeline-container {
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+        .timeline-year {
+            display: flex;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 0.75rem 0;
+        }
+        .timeline-year:last-child {
+            border-bottom: none;
+        }
+        .timeline-year-label {
+            width: 80px;
+            font-weight: 600;
+            color: #1e40af;
+            flex-shrink: 0;
+        }
+        .timeline-year-content {
+            flex: 1;
+        }
+        .timeline-item {
+            font-size: 0.85rem;
+            padding: 0.25rem 0;
+            color: #475569;
+        }
+        .timeline-item.prj {
+            color: #059669;
+            font-weight: 500;
+        }
+        .timeline-item.activity {
+            color: #7c3aed;
+        }
+        .timeline-empty {
+            color: #94a3b8;
+            font-style: italic;
+        }
+        .rolling-windows {
+            margin-top: 1.5rem;
+        }
+        .window-card {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0.5rem 0.75rem;
+            margin: 0.25rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            min-width: 90px;
+        }
+        .window-card.ok {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .window-card.risk {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .window-card.current {
+            border: 2px solid #1e40af;
+        }
+        .window-card.future {
+            opacity: 0.7;
+        }
+        .window-period {
+            font-weight: 600;
+        }
+        .window-stats {
+            font-size: 0.7rem;
+            color: inherit;
+            opacity: 0.8;
+        }
+        .risk-warning {
+            background: #fef3c7;
+            border: 1px solid #fcd34d;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+        .risk-warning h4 {
+            color: #92400e;
+            margin: 0 0 0.5rem 0;
+        }
+        .risk-warning p {
+            color: #78350f;
+            margin: 0;
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 <body>
@@ -396,6 +503,7 @@
         let contributionsSortState = { column: 'year', direction: 'desc' };
         let managedSortState = { column: 'year', direction: 'desc' };
         let facultySortState = { column: 'name', direction: 'asc' };
+        let selectedPeriod = { year_from: 2020, year_to: 2025 }; // Default 6-year window
 
         document.addEventListener('DOMContentLoaded', async () => {
             await checkAuth();
@@ -806,13 +914,24 @@
             document.getElementById('overview-content').style.display = 'none';
 
             try {
-                const response = await fetch(`${API_BASE}/research/faculty-overview`, { credentials: 'include' });
+                const params = new URLSearchParams({
+                    year_from: selectedPeriod.year_from,
+                    year_to: selectedPeriod.year_to,
+                });
+                const response = await fetch(`${API_BASE}/research/faculty-overview?${params}`, { credentials: 'include' });
                 if (!response.ok) throw new Error('Failed to load overview');
                 const data = await response.json();
                 renderFacultyOverview(data);
             } catch (error) {
                 document.getElementById('overview-loading').innerHTML = `<p class="text-error">Error: ${error.message}</p>`;
             }
+        }
+
+        function changePeriod(periodValue) {
+            const [yearFrom, yearTo] = periodValue.split('-').map(Number);
+            selectedPeriod.year_from = yearFrom;
+            selectedPeriod.year_to = yearTo;
+            loadFacultyOverview();
         }
 
         function renderFacultyOverview(data) {
@@ -828,7 +947,24 @@
             // Sort faculty
             const sortedFaculty = sortFaculty([...data.faculty], facultySortState.column, facultySortState.direction);
 
+            // Generate period options (6-year windows)
+            const currentYear = 2025;
+            const periodOptions = [];
+            for (let endYear = currentYear + 2; endYear >= currentYear - 3; endYear--) {
+                const startYear = endYear - 5;
+                const selected = data.period.year_from === startYear && data.period.year_to === endYear;
+                periodOptions.push(`<option value="${startYear}-${endYear}" ${selected ? 'selected' : ''}>${startYear} - ${endYear}</option>`);
+            }
+
             content.innerHTML = `
+                <div class="period-selector">
+                    <label for="period-select">Evaluation Period:</label>
+                    <select id="period-select" onchange="changePeriod(this.value)">
+                        ${periodOptions.join('')}
+                    </select>
+                    <span class="text-muted" style="margin-left: 0.5rem;">(6-year rolling window)</span>
+                </div>
+
                 <div class="summary-stats">
                     <div class="stat-card">
                         <div class="stat-value">${summary.total_faculty}</div>
@@ -844,7 +980,7 @@
                     </div>
                 </div>
 
-                <p style="margin-bottom: 1rem; color: #64748b;">Click on a faculty member to manage their ICs and activities.</p>
+                <p style="margin-bottom: 1rem; color: #64748b;">Click "Manage" to edit ICs and activities, or "Timeline" to view qualification history and forecast.</p>
 
                 <div style="overflow-x: auto;">
                     <table class="faculty-overview-table" id="faculty-table">
@@ -882,8 +1018,9 @@
                                     <td>
                                         ${f.has_exemptions ? `<span class="badge" style="background: #fef3c7; color: #92400e;" title="${f.exemption_count} exemption(s)">${f.exemption_count}</span>` : '-'}
                                     </td>
-                                    <td>
+                                    <td style="white-space: nowrap;">
                                         <button class="btn btn-sm btn-outline" onclick="manageUser(${f.id}, '${escapeHtml(f.name)}')">Manage</button>
+                                        <button class="btn btn-sm btn-outline" onclick="showTimeline(${f.id}, '${escapeHtml(f.name)}')" style="margin-left: 0.25rem;">Timeline</button>
                                     </td>
                                 </tr>
                             `).join('')}
@@ -1444,6 +1581,159 @@
             } catch (error) {
                 alert('Failed to delete exemption: ' + error.message);
             }
+        }
+
+        // ============================================
+        // Researcher Timeline View
+        // ============================================
+
+        async function showTimeline(userId, userName) {
+            // Show loading modal
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay active';
+            modal.id = 'timeline-modal';
+            modal.innerHTML = `
+                <div class="modal" style="max-width: 900px;">
+                    <div class="modal-header">
+                        <h2>Qualification Timeline - ${escapeHtml(userName)}</h2>
+                        <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="loading"><div class="spinner"></div></div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            try {
+                const response = await fetch(`${API_BASE}/research/admin/user/${userId}/timeline`, { credentials: 'include' });
+                if (!response.ok) throw new Error('Failed to load timeline');
+                const data = await response.json();
+                renderTimeline(data);
+            } catch (error) {
+                modal.querySelector('.modal-body').innerHTML = `<p class="text-error">Error: ${error.message}</p>`;
+            }
+        }
+
+        function renderTimeline(data) {
+            const modalBody = document.querySelector('#timeline-modal .modal-body');
+
+            const user = data.user;
+            const timeline = data.timeline;
+            const windows = data.rolling_windows;
+
+            // Build timeline HTML
+            let timelineHtml = '';
+            for (const yearData of timeline.slice().reverse()) {
+                const ics = yearData.ics || [];
+                const activities = yearData.activities || [];
+
+                if (ics.length === 0 && activities.length === 0) {
+                    timelineHtml += `
+                        <div class="timeline-year">
+                            <div class="timeline-year-label">${yearData.year}</div>
+                            <div class="timeline-year-content">
+                                <div class="timeline-empty">No qualifying activities</div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    let contentHtml = '';
+                    for (const ic of ics) {
+                        const isPrj = ic.is_prj;
+                        contentHtml += `
+                            <div class="timeline-item ${isPrj ? 'prj' : ''}">
+                                ${isPrj ? '[PRJ]' : '[IC]'} ${truncate(ic.title, 70)}
+                            </div>
+                        `;
+                    }
+                    for (const act of activities) {
+                        contentHtml += `
+                            <div class="timeline-item activity">
+                                [Activity] ${act.activity_type}${act.description ? ': ' + truncate(act.description, 50) : ''}
+                            </div>
+                        `;
+                    }
+                    timelineHtml += `
+                        <div class="timeline-year">
+                            <div class="timeline-year-label">${yearData.year}</div>
+                            <div class="timeline-year-content">${contentHtml}</div>
+                        </div>
+                    `;
+                }
+            }
+
+            // Build rolling windows visualization
+            let windowsHtml = '';
+            for (const w of windows) {
+                const statusClass = w.meets_requirements ? 'ok' : 'risk';
+                const currentClass = w.is_current ? 'current' : '';
+                const futureClass = w.is_future ? 'future' : '';
+                const stats = user.faculty_category === 'SA' || user.faculty_category === 'SP'
+                    ? `PRJ: ${w.prj_count}, IC: ${w.total_ics}`
+                    : `Act: ${w.activities}`;
+
+                windowsHtml += `
+                    <div class="window-card ${statusClass} ${currentClass} ${futureClass}" title="${w.status_notes.join(', ') || 'Requirements met'}">
+                        <div class="window-period">${w.period}</div>
+                        <div class="window-stats">${stats}</div>
+                        ${w.is_current ? '<div style="font-size: 0.65rem;">Current</div>' : ''}
+                    </div>
+                `;
+            }
+
+            // Risk warning if applicable
+            let riskHtml = '';
+            if (data.at_risk && data.risk_periods.length > 0) {
+                const riskPeriods = data.risk_periods.map(r => r.period).join(', ');
+                riskHtml = `
+                    <div class="risk-warning">
+                        <h4>At Risk of Losing Qualification</h4>
+                        <p>Based on current activities, this researcher may not meet requirements for: <strong>${riskPeriods}</strong></p>
+                        <p style="margin-top: 0.5rem;">Review their contributions and consider actions needed to maintain qualification.</p>
+                    </div>
+                `;
+            }
+
+            // Exemptions display
+            let exemptionsHtml = '';
+            if (data.exemptions && data.exemptions.length > 0) {
+                exemptionsHtml = `
+                    <div style="margin-top: 1rem; padding: 0.75rem; background: #f8fafc; border-radius: 6px;">
+                        <strong>Active Exemptions:</strong>
+                        ${data.exemptions.map(e => `
+                            <span class="badge" style="background: #fef3c7; color: #92400e; margin-left: 0.5rem;">
+                                ${e.type} (${e.year_from}${e.year_to ? '-' + e.year_to : '+'}${e.grants_full_exemption ? ' - Full' : ''})
+                            </span>
+                        `).join('')}
+                    </div>
+                `;
+            }
+
+            modalBody.innerHTML = `
+                <div style="margin-bottom: 1rem;">
+                    <p><strong>Category:</strong> <span class="badge badge-category">${user.faculty_category || 'Not set'}</span></p>
+                    <p><strong>Degree:</strong> ${user.highest_degree || '-'}${user.degree_year ? ` (${user.degree_year})` : ''}</p>
+                    <p><strong>Total ICs:</strong> ${data.totals.total_ics} (${data.totals.total_prj} PRJ) | <strong>Total Activities:</strong> ${data.totals.total_activities}</p>
+                </div>
+
+                ${exemptionsHtml}
+
+                <div class="rolling-windows">
+                    <h4 style="margin-bottom: 0.5rem;">6-Year Rolling Windows</h4>
+                    <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.5rem;">Green = meets requirements, Red = does not meet requirements. Blue border = current evaluation period.</p>
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.25rem;">
+                        ${windowsHtml}
+                    </div>
+                </div>
+
+                ${riskHtml}
+
+                <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem;">Activity Timeline</h4>
+                <div class="timeline-container" style="border: 1px solid #e2e8f0; border-radius: 6px; padding: 1rem; background: #fafafa;">
+                    ${timelineHtml || '<p class="text-muted">No activities recorded</p>'}
+                </div>
+            `;
         }
     </script>
 </body>

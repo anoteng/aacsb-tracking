@@ -186,6 +186,31 @@
         .auth-icon.active {
             opacity: 1;
         }
+        /* Sortable columns */
+        .user-table th.sortable {
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            padding-right: 1.5rem;
+        }
+        .user-table th.sortable:hover {
+            background: #e2e8f0;
+        }
+        .user-table th.sortable::after {
+            content: '⇅';
+            position: absolute;
+            right: 0.5rem;
+            opacity: 0.4;
+            font-size: 0.75rem;
+        }
+        .user-table th.sortable.asc::after {
+            content: '↑';
+            opacity: 1;
+        }
+        .user-table th.sortable.desc::after {
+            content: '↓';
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
@@ -233,6 +258,7 @@
         let degrees = [];
         let disciplines = [];
         let responsibilities = [];
+        let userSortState = { column: null, direction: 'asc' };
 
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
@@ -307,7 +333,7 @@
         }
 
         function renderUsers(searchTerm = '') {
-            const filtered = users.filter(u => {
+            let filtered = users.filter(u => {
                 if (!searchTerm) return true;
                 const term = searchTerm.toLowerCase();
                 return u.firstname.toLowerCase().includes(term) ||
@@ -315,16 +341,24 @@
                        u.email.toLowerCase().includes(term);
             });
 
+            // Apply sorting
+            filtered = sortUsers(filtered);
+
+            const getSortClass = (col) => {
+                if (userSortState.column !== col) return 'sortable';
+                return `sortable ${userSortState.direction}`;
+            };
+
             const html = `
                 <table class="user-table">
                     <thead>
                         <tr>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Category</th>
+                            <th class="${getSortClass('name')}" onclick="handleUserSort('name')">Name</th>
+                            <th class="${getSortClass('email')}" onclick="handleUserSort('email')">Email</th>
+                            <th class="${getSortClass('category')}" onclick="handleUserSort('category')">Category</th>
                             <th>Disciplines</th>
-                            <th>Status</th>
-                            <th>Global Roles</th>
+                            <th class="${getSortClass('status')}" onclick="handleUserSort('status')">Status</th>
+                            <th class="${getSortClass('roles')}" onclick="handleUserSort('roles')">Global Roles</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -377,6 +411,55 @@
                     showRolesModal(userId);
                 });
             });
+        }
+
+        function sortUsers(userList) {
+            if (!userSortState.column) return userList;
+
+            const sorted = [...userList];
+            const dir = userSortState.direction === 'asc' ? 1 : -1;
+
+            sorted.sort((a, b) => {
+                let valA, valB;
+                switch (userSortState.column) {
+                    case 'name':
+                        valA = `${a.lastname} ${a.firstname}`.toLowerCase();
+                        valB = `${b.lastname} ${b.firstname}`.toLowerCase();
+                        break;
+                    case 'email':
+                        valA = a.email.toLowerCase();
+                        valB = b.email.toLowerCase();
+                        break;
+                    case 'category':
+                        valA = a.faculty_category || '';
+                        valB = b.faculty_category || '';
+                        break;
+                    case 'status':
+                        valA = a.active ? 1 : 0;
+                        valB = b.active ? 1 : 0;
+                        return (valA - valB) * dir;
+                    case 'roles':
+                        valA = a.roles.length;
+                        valB = b.roles.length;
+                        return (valA - valB) * dir;
+                    default:
+                        return 0;
+                }
+                return valA.localeCompare(valB) * dir;
+            });
+
+            return sorted;
+        }
+
+        function handleUserSort(column) {
+            if (userSortState.column === column) {
+                userSortState.direction = userSortState.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                userSortState.column = column;
+                userSortState.direction = 'asc';
+            }
+            const searchTerm = document.getElementById('search-input').value;
+            renderUsers(searchTerm);
         }
 
         function showAddUserModal() {
