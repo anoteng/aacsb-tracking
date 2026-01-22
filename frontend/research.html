@@ -367,9 +367,8 @@
         }
 
         function initYearSelects() {
-            // Use 2025 as current year (hardcoded to avoid system date issues)
-            const currentYear = 2025;
-            const defaultYearFrom = currentYear - 6;  // 2019
+            const currentYear = new Date().getFullYear() - 1;
+            const defaultYearFrom = currentYear - 1;  // 2019
             const yearFrom = document.getElementById('year-from');
             const yearTo = document.getElementById('year-to');
 
