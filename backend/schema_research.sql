@@ -70,6 +70,7 @@ ALTER TABLE users
     ADD COLUMN IF NOT EXISTS faculty_category ENUM('SA', 'PA', 'SP', 'IP', 'Other') DEFAULT NULL,
     ADD COLUMN IF NOT EXISTS is_participating BOOLEAN DEFAULT TRUE,
     ADD COLUMN IF NOT EXISTS participating_note TEXT,
+    ADD COLUMN IF NOT EXISTS employment_percentage DECIMAL(5,2) DEFAULT 100.00,
     ADD COLUMN IF NOT EXISTS highest_degree_id INT DEFAULT NULL,
     ADD COLUMN IF NOT EXISTS degree_year INT DEFAULT NULL,
     ADD CONSTRAINT fk_users_degree FOREIGN KEY (highest_degree_id) REFERENCES degrees(id) ON DELETE SET NULL;

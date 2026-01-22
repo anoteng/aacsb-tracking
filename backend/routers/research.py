@@ -995,6 +995,7 @@ async def get_faculty_overview(
             "email": user.email,
             "faculty_category": category.value if category else None,
             "is_participating": user.is_participating,
+            "employment_percentage": float(user.employment_percentage) if user.employment_percentage else 100.0,
             "highest_degree": user.highest_degree.name if user.highest_degree else None,
             "degree_year": user.degree_year,
             "disciplines": [

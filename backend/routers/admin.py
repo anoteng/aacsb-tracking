@@ -36,6 +36,7 @@ class UserUpdate(BaseModel):
     faculty_category: Optional[str] = None  # SA, PA, SP, IP, Other
     is_participating: Optional[bool] = None
     participating_note: Optional[str] = None
+    employment_percentage: Optional[float] = None  # FTE percentage (0-100)
     highest_degree_id: Optional[int] = None
     degree_year: Optional[int] = None
 
@@ -62,6 +63,7 @@ class UserResponse(BaseModel):
     faculty_category: Optional[str] = None
     is_participating: bool = True
     participating_note: Optional[str] = None
+    employment_percentage: float = 100.0  # FTE percentage (0-100)
     highest_degree: Optional[dict] = None
     degree_year: Optional[int] = None
     disciplines: list[dict] = []
@@ -126,6 +128,7 @@ def serialize_user(u: User) -> UserResponse:
         faculty_category=u.faculty_category.value if u.faculty_category else None,
         is_participating=u.is_participating if u.is_participating is not None else True,
         participating_note=u.participating_note,
+        employment_percentage=float(u.employment_percentage) if u.employment_percentage is not None else 100.0,
         highest_degree={"id": u.highest_degree.id, "name": u.highest_degree.name} if u.highest_degree else None,
         degree_year=u.degree_year,
         disciplines=[
@@ -287,6 +290,8 @@ async def update_user(
         user.is_participating = request.is_participating
     if request.participating_note is not None:
         user.participating_note = request.participating_note if request.participating_note != "" else None
+    if request.employment_percentage is not None:
+        user.employment_percentage = Decimal(str(request.employment_percentage))
     if request.highest_degree_id is not None:
         if request.highest_degree_id == 0:
             user.highest_degree_id = None

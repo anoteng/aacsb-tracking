@@ -988,6 +988,7 @@
                             <tr>
                                 <th class="sortable ${facultySortState.column === 'name' ? facultySortState.direction : ''}" data-sort="name">Name</th>
                                 <th class="sortable ${facultySortState.column === 'category' ? facultySortState.direction : ''}" data-sort="category">Category</th>
+                                <th class="sortable ${facultySortState.column === 'employment' ? facultySortState.direction : ''}" data-sort="employment">FTE %</th>
                                 <th>Degree</th>
                                 <th>Disciplines</th>
                                 <th class="sortable ${facultySortState.column === 'prj' ? facultySortState.direction : ''}" data-sort="prj">PRJ</th>
@@ -1004,6 +1005,7 @@
                                 <tr>
                                     <td><strong>${f.name}</strong></td>
                                     <td><span class="badge badge-category">${f.faculty_category}</span></td>
+                                    <td>${f.employment_percentage < 100 ? `<span style="color: #0369a1;">${f.employment_percentage}%</span>` : '100%'}</td>
                                     <td>${f.highest_degree || '-'}${f.degree_year ? ` (${f.degree_year})` : ''}</td>
                                     <td>${f.disciplines.map(d => `${d.shorthand}`).join(', ') || '-'}</td>
                                     <td>${f.ics.prj_articles}</td>
@@ -1048,6 +1050,10 @@
                         return a.name.localeCompare(b.name) * mult;
                     case 'category':
                         return (a.faculty_category || '').localeCompare(b.faculty_category || '') * mult;
+                    case 'employment':
+                        valA = a.employment_percentage || 100;
+                        valB = b.employment_percentage || 100;
+                        return (valA - valB) * mult;
                     case 'prj':
                         return (a.ics.prj_articles - b.ics.prj_articles) * mult;
                     case 'other_ic':
@@ -1073,7 +1079,7 @@
                 facultySortState.direction = facultySortState.direction === 'asc' ? 'desc' : 'asc';
             } else {
                 facultySortState.column = column;
-                // Default to descending for numeric columns
+                // Default to descending for numeric columns, ascending for text
                 facultySortState.direction = ['name', 'category'].includes(column) ? 'asc' : 'desc';
             }
             if (facultyOverviewData) {

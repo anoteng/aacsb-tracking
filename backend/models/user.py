@@ -31,6 +31,7 @@ class User(Base):
     faculty_category = Column(Enum(FacultyCategory), default=None)
     is_participating = Column(Boolean, default=True)
     participating_note = Column(Text)
+    employment_percentage = Column(DECIMAL(5, 2), default=100.00)  # FTE percentage (0-100)
     highest_degree_id = Column(Integer, ForeignKey("degrees.id"), default=None)
     degree_year = Column(Integer, default=None)
 
