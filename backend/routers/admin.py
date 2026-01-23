@@ -1,17 +1,18 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session, joinedload
 from typing import Optional
 from decimal import Decimal
 
 from database import get_db
-from dependencies import require_role
+from dependencies import require_role, get_real_user
 from models import (
     User, Role, UserRole, UserProgrammeRole, StudyProgramme, FacultyCategory,
     Degree, Discipline, ProfessionalResponsibility,
     UserDiscipline, UserResponsibility, UserTeachingProductivity,
 )
 from services.nva import nva_service
+from services.auth import AuthService
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
@@ -811,3 +812,102 @@ async def search_nva_persons(
         return results
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to search: {str(e)}")
+
+
+# ============================================
+# User Impersonation (View As)
+# ============================================
+
+@router.post("/impersonate/{user_id}")
+async def start_impersonation(
+    user_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    real_user: User = Depends(get_real_user),
+):
+    """
+    Start impersonating another user (View As).
+    System admin only. Allows viewing the system as another user.
+    """
+    # Check that the real user is a system admin
+    auth_service = AuthService(db)
+    if not auth_service.is_system_admin(real_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only system admins can impersonate users",
+        )
+
+    # Cannot impersonate yourself
+    if user_id == real_user.uuid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot impersonate yourself",
+        )
+
+    # Get target user
+    target_user = db.query(User).filter(User.uuid == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if not target_user.active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot impersonate inactive user",
+        )
+
+    # Get token from request
+    token = request.cookies.get("session_token")
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No session token found",
+        )
+
+    # Start impersonation
+    success = auth_service.start_impersonation(token, user_id)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to start impersonation",
+        )
+
+    return {
+        "message": f"Now viewing as {target_user.firstname} {target_user.lastname}",
+        "impersonating": {
+            "id": target_user.uuid,
+            "name": f"{target_user.firstname} {target_user.lastname}",
+            "email": target_user.email,
+        },
+    }
+
+
+@router.post("/stop-impersonation")
+async def stop_impersonation(
+    request: Request,
+    db: Session = Depends(get_db),
+    real_user: User = Depends(get_real_user),
+):
+    """Stop impersonating and return to your own view."""
+    token = request.cookies.get("session_token")
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No session token found",
+        )
+
+    auth_service = AuthService(db)
+    success = auth_service.stop_impersonation(token)
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to stop impersonation",
+        )
+
+    return {
+        "message": "Stopped impersonation",
+        "user": {
+            "id": real_user.uuid,
+            "name": f"{real_user.firstname} {real_user.lastname}",
+        },
+    }

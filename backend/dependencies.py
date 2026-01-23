@@ -8,20 +8,64 @@ from models import User
 security = HTTPBearer(auto_error=False)
 
 
+def _get_token_from_request(request: Request, credentials: HTTPAuthorizationCredentials = None) -> str | None:
+    """Extract token from Authorization header or cookie."""
+    if credentials:
+        return credentials.credentials
+    return request.cookies.get("session_token")
+
+
 async def get_current_user(
     request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db),
 ) -> User:
-    """Get the current authenticated user from session token."""
-    token = None
+    """
+    Get the current effective user from session token.
+    If impersonating, returns the impersonated user.
+    """
+    token = _get_token_from_request(request, credentials)
 
-    # Try to get token from Authorization header
-    if credentials:
-        token = credentials.credentials
-    # Fallback to cookie
-    else:
-        token = request.cookies.get("session_token")
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    auth_service = AuthService(db)
+    effective_user, real_user = auth_service.get_effective_user(token)
+
+    if not effective_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired session",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if not effective_user.active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is deactivated",
+        )
+
+    # Store impersonation info in request state for access by endpoints
+    request.state.real_user = real_user
+    request.state.is_impersonating = (effective_user.uuid != real_user.uuid)
+
+    return effective_user
+
+
+async def get_real_user(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db),
+) -> User:
+    """
+    Get the real authenticated user (not impersonated).
+    Use this for sensitive operations that should always check the real admin.
+    """
+    token = _get_token_from_request(request, credentials)
 
     if not token:
         raise HTTPException(
@@ -62,14 +106,21 @@ async def get_current_user_optional(
 
 
 def require_role(*roles: str):
-    """Dependency factory that requires user to have one of the specified roles."""
+    """
+    Dependency factory that requires user to have one of the specified roles.
+    When impersonating, checks the REAL user's roles (admin keeps their permissions).
+    """
 
     async def role_checker(
+        request: Request,
         user: User = Depends(get_current_user),
         db: Session = Depends(get_db),
     ) -> User:
         auth_service = AuthService(db)
-        user_roles = auth_service.get_user_roles(user)
+
+        # Use real user for permission checks (important when impersonating)
+        real_user = getattr(request.state, 'real_user', user)
+        user_roles = auth_service.get_user_roles(real_user)
 
         # System admin always has access
         if "system_admin" in user_roles:

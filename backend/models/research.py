@@ -164,6 +164,8 @@ class ExemptionType(Base):
     activity_reduction = Column(Integer, default=0)
     # For time-based exemptions (e.g., years after degree)
     years_after_degree = Column(Integer, default=None)
+    # Grace period after exemption ends (e.g., 4 years after stepping down as Dean)
+    grace_period_years = Column(Integer, default=0)
     created_at = Column(DateTime, server_default=func.now())
 
     # Relationships

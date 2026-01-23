@@ -410,6 +410,16 @@
     </style>
 </head>
 <body>
+    <!-- Impersonation Banner (hidden by default) -->
+    <div id="impersonation-banner" class="impersonation-banner" style="display: none;">
+        <div class="banner-text">
+            <strong>Viewing as:</strong>
+            <span id="impersonating-name"></span>
+            <span style="opacity: 0.7;">(<span id="impersonating-email"></span>)</span>
+        </div>
+        <button class="btn-stop" onclick="stopImpersonation()">Stop Viewing As</button>
+    </div>
+
     <nav class="nav">
         <div class="container">
             <a href="/aacsb/aol" class="nav-brand">AACSB Accreditation</a>
@@ -521,6 +531,9 @@
                 currentUser = await response.json();
                 isAdmin = currentUser.roles.some(r => ['system_admin', 'dean', 'vice_dean'].includes(r));
 
+                // Check for impersonation and show banner
+                updateImpersonationBanner(currentUser);
+
                 document.getElementById('nav-user').innerHTML = `
                     <span>${currentUser.firstname} ${currentUser.lastname}</span>
                     <button onclick="logout()" class="btn btn-sm btn-outline" style="color: white; border-color: rgba(255,255,255,0.3);">Logout</button>
@@ -531,6 +544,33 @@
                 }
             } catch (error) {
                 window.location.href = '/aacsb/login';
+            }
+        }
+
+        function updateImpersonationBanner(user) {
+            const banner = document.getElementById('impersonation-banner');
+            if (user.impersonation && user.impersonation.active) {
+                document.getElementById('impersonating-name').textContent = user.impersonation.viewing_as.name;
+                document.getElementById('impersonating-email').textContent = user.impersonation.viewing_as.email;
+                banner.style.display = 'flex';
+            } else {
+                banner.style.display = 'none';
+            }
+        }
+
+        async function stopImpersonation() {
+            try {
+                const response = await fetch(`${API_BASE}/admin/stop-impersonation`, {
+                    method: 'POST',
+                    credentials: 'include',
+                });
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.detail || 'Failed to stop impersonation');
+                }
+                window.location.reload();
+            } catch (error) {
+                alert(error.message);
             }
         }
 

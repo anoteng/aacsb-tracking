@@ -449,43 +449,78 @@ async def delete_activity(
 # ============================================
 
 def get_active_exemptions(user: User, year_from: int, year_to: int) -> list:
-    """Get user's exemptions that are active during the evaluation period."""
+    """
+    Get user's exemptions that are active during the evaluation period.
+    Also includes exemptions that are within their grace period.
+    """
     active = []
     for exemption in user.exemptions:
-        # Check if exemption overlaps with evaluation period
+        ex_type = exemption.exemption_type
         exemption_end = exemption.year_to or REFERENCE_YEAR + 10  # If no end, treat as ongoing
-        if exemption.year_from <= year_to and exemption_end >= year_from:
+        grace_period = ex_type.grace_period_years or 0
+
+        # Effective end includes the grace period
+        effective_end = exemption_end + grace_period
+
+        # Check if exemption (including grace period) overlaps with evaluation period
+        if exemption.year_from <= year_to and effective_end >= year_from:
             active.append(exemption)
     return active
 
 
-def calculate_qualification_status(user: User, contributions: list, activities: list, exemptions: list = None) -> dict:
+def is_in_grace_period(exemption, reference_year: int) -> bool:
+    """Check if an exemption is currently in its grace period (ended but within grace years)."""
+    if not exemption.year_to:
+        return False  # Still ongoing, not in grace period
+
+    grace_period = exemption.exemption_type.grace_period_years or 0
+    if grace_period == 0:
+        return False
+
+    # Grace period applies if: year_to < reference_year <= year_to + grace_period
+    return exemption.year_to < reference_year <= (exemption.year_to + grace_period)
+
+
+def calculate_qualification_status(user: User, contributions: list, activities: list, exemptions: list = None, reference_year: int = None) -> dict:
     """Calculate qualification status based on faculty category requirements and exemptions."""
+    if reference_year is None:
+        reference_year = REFERENCE_YEAR
+
     category = user.faculty_category
     if not category:
         return {"status": "not_set", "message": "Faculty category not set"}
 
     # Get active exemptions
     if exemptions is None:
-        exemptions = get_active_exemptions(user, REFERENCE_YEAR - 6, REFERENCE_YEAR)
+        exemptions = get_active_exemptions(user, reference_year - 5, reference_year)
 
-    # Check for full exemption (e.g., new doctoral graduate)
+    # Check for full exemption (including grace periods)
     full_exemption = None
+    full_exemption_reason = None
     for exemption in exemptions:
         ex_type = exemption.exemption_type
         if ex_type.grants_full_exemption:
-            # Check if it's a years-after-degree exemption
+            # Check if it's a years-after-degree exemption (e.g., New Doctoral Graduate)
             if ex_type.years_after_degree and user.degree_year:
-                years_since_degree = REFERENCE_YEAR - user.degree_year
+                years_since_degree = reference_year - user.degree_year
                 if years_since_degree <= ex_type.years_after_degree:
                     full_exemption = ex_type
+                    full_exemption_reason = f"{ex_type.name} ({years_since_degree} of {ex_type.years_after_degree} years)"
                     break
             elif not ex_type.years_after_degree:
-                # Non-time-based full exemption
-                full_exemption = ex_type
-                break
+                # Check if in grace period after stepping down
+                if is_in_grace_period(exemption, reference_year):
+                    years_in_grace = reference_year - exemption.year_to
+                    full_exemption = ex_type
+                    full_exemption_reason = f"{ex_type.name} (grace period: year {years_in_grace} of {ex_type.grace_period_years})"
+                    break
+                elif not exemption.year_to or exemption.year_to >= reference_year:
+                    # Still serving
+                    full_exemption = ex_type
+                    full_exemption_reason = f"{ex_type.name} (currently serving)"
+                    break
 
-    # Count ICs by type for the last 6 years
+    # Count ICs by type for the evaluation period
     prj_count = sum(1 for c in contributions if c.get("my_categorization", {}).get("publication_type") == "prj_article")
     peer_reviewed_count = sum(1 for c in contributions if c.get("my_categorization", {}).get("publication_type") == "peer_reviewed_other")
     other_ic_count = sum(1 for c in contributions if c.get("my_categorization", {}).get("publication_type") == "other_ic")
@@ -494,14 +529,23 @@ def calculate_qualification_status(user: User, contributions: list, activities: 
     # Count activities
     activity_count = len(activities)
 
-    # Calculate reductions from exemptions
+    # Calculate reductions from exemptions (only from non-full-exemption types)
     total_ic_reduction = 0
     total_prj_reduction = 0
     total_activity_reduction = 0
     exemption_notes = []
+    is_programme_leader = False
 
     for exemption in exemptions:
         ex_type = exemption.exemption_type
+        # Skip full exemption types for reductions
+        if ex_type.grants_full_exemption:
+            continue
+
+        # Check if this is Programme Leader (needs special handling)
+        if ex_type.name == "Programme Leader":
+            is_programme_leader = True
+
         if ex_type.reduces_ic_requirement:
             total_ic_reduction += ex_type.ic_reduction
         if ex_type.reduces_prj_requirement:
@@ -517,14 +561,17 @@ def calculate_qualification_status(user: User, contributions: list, activities: 
     # If full exemption applies, requirements are automatically met
     if full_exemption:
         requirements = {
-            "description": f"Full exemption: {full_exemption.name}",
+            "description": f"Full exemption: {full_exemption_reason}",
             "exemption_applied": True,
         }
         met = True
     elif category == FacultyCategory.SA:
         # SA: 6 ICs, at least 3 PRJ articles (with reductions)
+        # Programme Leader: 4 ICs, 1 PRJ
         ic_required = max(0, 6 - total_ic_reduction)
         prj_required = max(0, 3 - total_prj_reduction)
+        if is_programme_leader:
+            prj_required = max(1, prj_required)  # Programme Leader needs at least 1 PRJ
         requirements = {
             "total_ics_required": ic_required,
             "prj_required": prj_required,
@@ -541,6 +588,7 @@ def calculate_qualification_status(user: User, contributions: list, activities: 
 
     elif category == FacultyCategory.PA:
         # PA: 6 professional engagement activities (with reductions)
+        # Programme Leader: 3 activities
         activities_required = max(0, 6 - total_activity_reduction)
         requirements = {
             "activities_required": activities_required,
@@ -553,8 +601,10 @@ def calculate_qualification_status(user: User, contributions: list, activities: 
 
     elif category == FacultyCategory.SP:
         # SP: 5 ICs, at least 1 PRJ article (with reductions)
+        # Programme Leader: 3 ICs, 1 PRJ (PRJ stays at 1)
         ic_required = max(0, 5 - total_ic_reduction)
-        prj_required = max(0, 1 - total_prj_reduction)
+        # For SP, PRJ requirement is always at least 1 (even with Programme Leader)
+        prj_required = max(1, 1 - total_prj_reduction) if is_programme_leader else max(0, 1 - total_prj_reduction)
         requirements = {
             "total_ics_required": ic_required,
             "prj_required": prj_required,
@@ -571,6 +621,7 @@ def calculate_qualification_status(user: User, contributions: list, activities: 
 
     elif category == FacultyCategory.IP:
         # IP: 6 professional engagement activities (with reductions)
+        # Programme Leader: 3 activities
         activities_required = max(0, 6 - total_activity_reduction)
         requirements = {
             "activities_required": activities_required,
@@ -603,6 +654,7 @@ def calculate_qualification_status(user: User, contributions: list, activities: 
                 "type": e.exemption_type.name,
                 "year_from": e.year_from,
                 "year_to": e.year_to,
+                "in_grace_period": is_in_grace_period(e, reference_year),
             }
             for e in exemptions
         ],
@@ -950,10 +1002,13 @@ async def get_faculty_overview(
         # Get active exemptions
         active_exemptions = get_active_exemptions(user, year_from, year_to)
 
-        # Check for full exemption
+        # Check for full exemption (including grace periods)
         has_full_exemption = False
+        is_programme_leader = False
         for exemption in active_exemptions:
             ex_type = exemption.exemption_type
+            if ex_type.name == "Programme Leader":
+                is_programme_leader = True
             if ex_type.grants_full_exemption:
                 if ex_type.years_after_degree and user.degree_year:
                     years_since = year_to - user.degree_year
@@ -961,13 +1016,18 @@ async def get_faculty_overview(
                         has_full_exemption = True
                         break
                 elif not ex_type.years_after_degree:
-                    has_full_exemption = True
-                    break
+                    # Check if still serving or in grace period
+                    if is_in_grace_period(exemption, year_to):
+                        has_full_exemption = True
+                        break
+                    elif not exemption.year_to or exemption.year_to >= year_to:
+                        has_full_exemption = True
+                        break
 
-        # Calculate reductions from exemptions
-        total_ic_reduction = sum(e.exemption_type.ic_reduction for e in active_exemptions if e.exemption_type.reduces_ic_requirement)
-        total_prj_reduction = sum(e.exemption_type.prj_reduction for e in active_exemptions if e.exemption_type.reduces_prj_requirement)
-        total_activity_reduction = sum(e.exemption_type.activity_reduction for e in active_exemptions if e.exemption_type.reduces_activity_requirement)
+        # Calculate reductions from exemptions (skip full exemption types)
+        total_ic_reduction = sum(e.exemption_type.ic_reduction for e in active_exemptions if e.exemption_type.reduces_ic_requirement and not e.exemption_type.grants_full_exemption)
+        total_prj_reduction = sum(e.exemption_type.prj_reduction for e in active_exemptions if e.exemption_type.reduces_prj_requirement and not e.exemption_type.grants_full_exemption)
+        total_activity_reduction = sum(e.exemption_type.activity_reduction for e in active_exemptions if e.exemption_type.reduces_activity_requirement and not e.exemption_type.grants_full_exemption)
 
         # Determine if requirements are met (considering exemptions)
         category = user.faculty_category
@@ -976,13 +1036,15 @@ async def get_faculty_overview(
             met = True
         elif category == FacultyCategory.SA:
             prj_required = max(0, 3 - total_prj_reduction)
+            if is_programme_leader:
+                prj_required = max(1, prj_required)  # Programme Leader needs at least 1 PRJ
             ic_required = max(0, 6 - total_ic_reduction)
             met = prj_count >= prj_required and total_ics >= ic_required
         elif category == FacultyCategory.PA:
             activities_required = max(0, 6 - total_activity_reduction)
             met = activity_count >= activities_required
         elif category == FacultyCategory.SP:
-            prj_required = max(0, 1 - total_prj_reduction)
+            prj_required = 1 if is_programme_leader else max(0, 1 - total_prj_reduction)  # SP always needs at least 1 PRJ with Programme Leader
             ic_required = max(0, 5 - total_ic_reduction)
             met = prj_count >= prj_required and total_ics >= ic_required
         elif category == FacultyCategory.IP:
@@ -1146,25 +1208,34 @@ async def get_researcher_timeline(
         # Get active exemptions for this window
         active_exemptions = get_active_exemptions(user, start_year, end_year)
         has_full_exemption = False
+        is_programme_leader = False
         ic_reduction = 0
         prj_reduction = 0
         activity_reduction = 0
 
         for exemption in active_exemptions:
             ex_type = exemption.exemption_type
+            if ex_type.name == "Programme Leader":
+                is_programme_leader = True
             if ex_type.grants_full_exemption:
                 if ex_type.years_after_degree and user.degree_year:
                     years_since = end_year - user.degree_year
                     if years_since <= ex_type.years_after_degree:
                         has_full_exemption = True
                 elif not ex_type.years_after_degree:
-                    has_full_exemption = True
-            if ex_type.reduces_ic_requirement:
-                ic_reduction += ex_type.ic_reduction
-            if ex_type.reduces_prj_requirement:
-                prj_reduction += ex_type.prj_reduction
-            if ex_type.reduces_activity_requirement:
-                activity_reduction += ex_type.activity_reduction
+                    # Check if still serving or in grace period
+                    if is_in_grace_period(exemption, end_year):
+                        has_full_exemption = True
+                    elif not exemption.year_to or exemption.year_to >= end_year:
+                        has_full_exemption = True
+            # Only count reductions from non-full-exemption types
+            if not ex_type.grants_full_exemption:
+                if ex_type.reduces_ic_requirement:
+                    ic_reduction += ex_type.ic_reduction
+                if ex_type.reduces_prj_requirement:
+                    prj_reduction += ex_type.prj_reduction
+                if ex_type.reduces_activity_requirement:
+                    activity_reduction += ex_type.activity_reduction
 
         # Check requirements based on faculty category
         category = user.faculty_category
@@ -1176,6 +1247,8 @@ async def get_researcher_timeline(
             status_notes.append("Full exemption applies")
         elif category == FacultyCategory.SA:
             prj_required = max(0, 3 - prj_reduction)
+            if is_programme_leader:
+                prj_required = max(1, prj_required)
             ic_required = max(0, 6 - ic_reduction)
             if window_prj < prj_required:
                 meets_requirements = False
@@ -1189,7 +1262,7 @@ async def get_researcher_timeline(
                 meets_requirements = False
                 status_notes.append(f"Activities: {window_activities}/{activities_required}")
         elif category == FacultyCategory.SP:
-            prj_required = max(0, 1 - prj_reduction)
+            prj_required = 1 if is_programme_leader else max(0, 1 - prj_reduction)
             ic_required = max(0, 5 - ic_reduction)
             if window_prj < prj_required:
                 meets_requirements = False
@@ -1278,6 +1351,7 @@ async def get_exemption_types(
             "prj_reduction": t.prj_reduction,
             "activity_reduction": t.activity_reduction,
             "years_after_degree": t.years_after_degree,
+            "grace_period_years": t.grace_period_years,
         }
         for t in types
     ]

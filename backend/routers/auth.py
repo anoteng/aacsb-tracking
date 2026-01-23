@@ -429,20 +429,45 @@ async def google_unlink(
 
 @router.get("/me")
 async def get_current_user_info(
+    request: Request,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Get current user information."""
+    """Get current user information, including impersonation status."""
     auth_service = AuthService(db)
-    return UserResponse(
-        id=user.uuid,
-        email=user.email,
-        firstname=user.firstname,
-        lastname=user.lastname,
-        roles=auth_service.get_user_roles(user),
-        has_password=user.password_hash is not None,
-        has_google=user.google_id is not None,
-    )
+
+    # Check impersonation status
+    is_impersonating = getattr(request.state, 'is_impersonating', False)
+    real_user = getattr(request.state, 'real_user', user)
+
+    response = {
+        "id": user.uuid,
+        "email": user.email,
+        "firstname": user.firstname,
+        "lastname": user.lastname,
+        "roles": auth_service.get_user_roles(user),
+        "has_password": user.password_hash is not None,
+        "has_google": user.google_id is not None,
+    }
+
+    # Add impersonation info if active
+    if is_impersonating:
+        response["impersonation"] = {
+            "active": True,
+            "viewing_as": {
+                "id": user.uuid,
+                "name": f"{user.firstname} {user.lastname}",
+                "email": user.email,
+            },
+            "real_user": {
+                "id": real_user.uuid,
+                "name": f"{real_user.firstname} {real_user.lastname}",
+            },
+        }
+    else:
+        response["impersonation"] = {"active": False}
+
+    return response
 
 
 @router.post("/logout")

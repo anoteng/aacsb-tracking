@@ -104,9 +104,12 @@ class Session(Base):
     expires_at = Column(DateTime, nullable=False)
     ip_address = Column(String(45))
     user_agent = Column(String(255))
+    # Impersonation: if set, the session is viewing as this user
+    impersonating_user_id = Column(Integer, ForeignKey("users.uuid"), nullable=True)
 
     # Relationships
-    user = relationship("User", back_populates="sessions")
+    user = relationship("User", back_populates="sessions", foreign_keys=[user_id])
+    impersonating_user = relationship("User", foreign_keys=[impersonating_user_id])
 
 
 class AuthToken(Base):

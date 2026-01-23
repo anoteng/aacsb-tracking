@@ -95,6 +95,63 @@ class AuthService:
             return None
         return self.get_user_by_id(session.user_id)
 
+    def get_session_by_token(self, token: str) -> UserSession | None:
+        """Get the session object by token."""
+        return (
+            self.db.query(UserSession)
+            .filter(
+                UserSession.token == token,
+                UserSession.expires_at > datetime.utcnow(),
+            )
+            .first()
+        )
+
+    def start_impersonation(self, token: str, target_user_id: int) -> bool:
+        """Start impersonating another user. Returns True if successful."""
+        session = self.get_session_by_token(token)
+        if not session:
+            return False
+
+        # Verify target user exists and is active
+        target_user = self.get_user_by_id(target_user_id)
+        if not target_user or not target_user.active:
+            return False
+
+        session.impersonating_user_id = target_user_id
+        self.db.commit()
+        return True
+
+    def stop_impersonation(self, token: str) -> bool:
+        """Stop impersonating. Returns True if successful."""
+        session = self.get_session_by_token(token)
+        if not session:
+            return False
+
+        session.impersonating_user_id = None
+        self.db.commit()
+        return True
+
+    def get_effective_user(self, token: str) -> tuple[User | None, User | None]:
+        """
+        Get the effective user for a session.
+        Returns (effective_user, real_user) tuple.
+        If not impersonating, both are the same user.
+        """
+        session = self.get_session_by_token(token)
+        if not session:
+            return None, None
+
+        real_user = self.get_user_by_id(session.user_id)
+        if not real_user:
+            return None, None
+
+        if session.impersonating_user_id:
+            effective_user = self.get_user_by_id(session.impersonating_user_id)
+            if effective_user:
+                return effective_user, real_user
+
+        return real_user, real_user
+
     def invalidate_session(self, token: str) -> None:
         self.db.query(UserSession).filter(UserSession.token == token).delete()
         self.db.commit()

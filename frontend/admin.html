@@ -59,6 +59,48 @@
         .actions-cell {
             white-space: nowrap;
         }
+        /* Impersonation banner */
+        .impersonation-banner {
+            background: linear-gradient(90deg, #7c3aed, #6366f1);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .impersonation-banner .banner-text {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .impersonation-banner .btn-stop {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            padding: 0.375rem 0.75rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.875rem;
+        }
+        .impersonation-banner .btn-stop:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        .btn-view-as {
+            background: #f5f3ff;
+            color: #7c3aed;
+            border: 1px solid #c4b5fd;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            margin-left: 0.25rem;
+        }
+        .btn-view-as:hover {
+            background: #ede9fe;
+        }
         .btn-icon {
             padding: 0.375rem 0.5rem;
             border: none;
@@ -214,6 +256,16 @@
     </style>
 </head>
 <body>
+    <!-- Impersonation Banner (hidden by default) -->
+    <div id="impersonation-banner" class="impersonation-banner" style="display: none;">
+        <div class="banner-text">
+            <strong>Viewing as:</strong>
+            <span id="impersonating-name"></span>
+            <span style="opacity: 0.7;">(<span id="impersonating-email"></span>)</span>
+        </div>
+        <button class="btn-stop" onclick="stopImpersonation()">Stop Viewing As</button>
+    </div>
+
     <nav class="nav">
         <div class="container">
             <a href="/aacsb/aol" class="nav-brand">AACSB Accreditation</a>
@@ -280,8 +332,12 @@
                 }
                 currentUser = await response.json();
 
-                // Check if user is system_admin
-                if (!currentUser.roles.includes('system_admin')) {
+                // Check for impersonation and show banner
+                updateImpersonationBanner(currentUser);
+
+                // Check if user is system_admin (real user must be admin, not impersonated user)
+                // The backend handles this - if we can access admin endpoints, we're authorized
+                if (!currentUser.roles.includes('system_admin') && !currentUser.impersonation?.active) {
                     alert('Access denied. System admin role required.');
                     window.location.href = '/aacsb/aol';
                     return;
@@ -294,6 +350,51 @@
                 `;
             } catch (error) {
                 window.location.href = '/aacsb/login';
+            }
+        }
+
+        function updateImpersonationBanner(user) {
+            const banner = document.getElementById('impersonation-banner');
+            if (user.impersonation && user.impersonation.active) {
+                document.getElementById('impersonating-name').textContent = user.impersonation.viewing_as.name;
+                document.getElementById('impersonating-email').textContent = user.impersonation.viewing_as.email;
+                banner.style.display = 'flex';
+            } else {
+                banner.style.display = 'none';
+            }
+        }
+
+        async function startImpersonation(userId) {
+            try {
+                const response = await fetch(`${API_BASE}/admin/impersonate/${userId}`, {
+                    method: 'POST',
+                    credentials: 'include',
+                });
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.detail || 'Failed to start impersonation');
+                }
+                // Refresh the page to show the new view
+                window.location.reload();
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        async function stopImpersonation() {
+            try {
+                const response = await fetch(`${API_BASE}/admin/stop-impersonation`, {
+                    method: 'POST',
+                    credentials: 'include',
+                });
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.detail || 'Failed to stop impersonation');
+                }
+                // Refresh the page
+                window.location.reload();
+            } catch (error) {
+                alert(error.message);
             }
         }
 
@@ -389,6 +490,7 @@
                                 <td class="actions-cell">
                                     <button class="btn btn-sm btn-outline btn-edit" data-user-id="${u.id}">Edit</button>
                                     <button class="btn btn-sm btn-outline btn-roles" data-user-id="${u.id}">Roles</button>
+                                    <button class="btn-view-as" data-user-id="${u.id}" title="View system as this user">View as</button>
                                 </td>
                             </tr>
                         `).join('')}
@@ -410,6 +512,13 @@
                 btn.addEventListener('click', () => {
                     const userId = parseInt(btn.dataset.userId);
                     showRolesModal(userId);
+                });
+            });
+
+            document.querySelectorAll('.btn-view-as').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const userId = parseInt(btn.dataset.userId);
+                    startImpersonation(userId);
                 });
             });
         }
@@ -639,7 +748,7 @@
 
                         <!-- Responsibilities -->
                         <h3>Professional Responsibilities</h3>
-                        <div id="user-responsibilities" style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                        <div id="user-responsibilities" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.5rem;">
                             ${responsibilities.map(r => `
                                 <label style="display: flex; align-items: center; gap: 0.25rem; background: #f1f5f9; padding: 0.25rem 0.5rem; border-radius: 4px;">
                                     <input type="checkbox" class="resp-checkbox" value="${r.id}" ${user.responsibilities && user.responsibilities.find(ur => ur.id === r.id) ? 'checked' : ''}>
@@ -648,6 +757,15 @@
                             `).join('')}
                             ${responsibilities.length === 0 ? '<span class="text-muted">No responsibilities configured</span>' : ''}
                         </div>
+                        <div id="add-responsibility-form" style="display: none; margin-bottom: 0.5rem;">
+                            <div class="form-row" style="gap: 0.5rem;">
+                                <input type="text" id="new-resp-shorthand" class="form-input" placeholder="Code (e.g., MT)" style="width: 80px;">
+                                <input type="text" id="new-resp-name" class="form-input" placeholder="Full name (e.g., Management Teaching)" style="flex: 1;">
+                                <button type="button" class="btn btn-sm btn-primary" onclick="createResponsibility()">Add</button>
+                                <button type="button" class="btn btn-sm btn-outline" onclick="toggleAddResponsibility(false)">Cancel</button>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline" id="btn-add-resp" onclick="toggleAddResponsibility(true)">+ Add New Responsibility Type</button>
 
                         <!-- Teaching Productivity -->
                         <h3>Teaching Productivity (ECTS Credits)</h3>
@@ -1142,6 +1260,69 @@
                 }
             } catch (error) {
                 console.error('Failed to refresh user:', error);
+            }
+        }
+
+        // ============================================
+        // Professional Responsibilities Management
+        // ============================================
+
+        function toggleAddResponsibility(show) {
+            const form = document.getElementById('add-responsibility-form');
+            const btn = document.getElementById('btn-add-resp');
+            if (show) {
+                form.style.display = 'block';
+                btn.style.display = 'none';
+                document.getElementById('new-resp-shorthand').focus();
+            } else {
+                form.style.display = 'none';
+                btn.style.display = 'inline-block';
+                document.getElementById('new-resp-shorthand').value = '';
+                document.getElementById('new-resp-name').value = '';
+            }
+        }
+
+        async function createResponsibility() {
+            const shorthand = document.getElementById('new-resp-shorthand').value.trim();
+            const name = document.getElementById('new-resp-name').value.trim();
+
+            if (!shorthand || !name) {
+                alert('Please enter both code and name');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/responsibilities?name=${encodeURIComponent(name)}&shorthand=${encodeURIComponent(shorthand)}`, {
+                    method: 'POST',
+                    credentials: 'include',
+                });
+
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.detail || 'Failed to create responsibility');
+                }
+
+                const newResp = await response.json();
+                responsibilities.push(newResp);
+
+                // Add checkbox for the new responsibility
+                const container = document.getElementById('user-responsibilities');
+                const noConfigured = container.querySelector('.text-muted');
+                if (noConfigured) {
+                    noConfigured.remove();
+                }
+
+                const label = document.createElement('label');
+                label.style.cssText = 'display: flex; align-items: center; gap: 0.25rem; background: #f1f5f9; padding: 0.25rem 0.5rem; border-radius: 4px;';
+                label.innerHTML = `
+                    <input type="checkbox" class="resp-checkbox" value="${newResp.id}" checked>
+                    <span title="${newResp.name}">${newResp.shorthand}</span>
+                `;
+                container.appendChild(label);
+
+                toggleAddResponsibility(false);
+            } catch (error) {
+                alert(error.message);
             }
         }
     </script>

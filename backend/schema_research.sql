@@ -133,19 +133,31 @@ CREATE TABLE IF NOT EXISTS exemption_types (
     activity_reduction INT DEFAULT 0,
     -- For time-based exemptions (e.g., years after degree)
     years_after_degree INT DEFAULT NULL,
+    -- Grace period after exemption ends (e.g., 4 years after stepping down as Dean)
+    grace_period_years INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Prefill common exemption types
+-- New Doctoral Graduate: Full exemption for 6 years after earning doctorate
 INSERT IGNORE INTO exemption_types (name, description, grants_full_exemption, years_after_degree) VALUES
-    ('New Doctoral Graduate', 'Within 5 years of earning doctoral degree - qualifies as SA based on degree alone', TRUE, 5);
+    ('New Doctoral Graduate', 'Within 6 years of earning doctoral degree - qualifies as SA based on degree alone', TRUE, 6);
 
-INSERT IGNORE INTO exemption_types (name, description, reduces_ic_requirement, reduces_prj_requirement, ic_reduction, prj_reduction) VALUES
-    ('Dean', 'Serving as Dean - reduced IC requirements', TRUE, TRUE, 3, 2),
-    ('Associate Dean', 'Serving as Associate Dean - reduced IC requirements', TRUE, TRUE, 2, 1),
-    ('Department Chair', 'Serving as Department Chair - reduced IC requirements', TRUE, TRUE, 2, 1),
-    ('Program Director', 'Serving as Program Director - reduced IC requirements', TRUE, TRUE, 1, 1),
-    ('Heavy Administrative Load', 'Significant administrative responsibilities - reduced requirements', TRUE, TRUE, 2, 1);
+-- ABD Doctoral Student: Full exemption for 3 years (set year_from when becoming ABD, year_to = year_from + 3)
+INSERT IGNORE INTO exemption_types (name, description, grants_full_exemption) VALUES
+    ('ABD Doctoral Student', 'ABD doctoral students are considered SA for three years from ABD status', TRUE);
+
+-- Administrative duties: Full exemption while serving + 4 years grace period after stepping down
+INSERT IGNORE INTO exemption_types (name, description, grants_full_exemption, grace_period_years) VALUES
+    ('Dean', 'Serving as Dean - maintains qualification status + 4 years after stepping down', TRUE, 4),
+    ('Associate Dean', 'Serving as Associate Dean - maintains qualification status + 4 years after stepping down', TRUE, 4),
+    ('Department Chair', 'Serving as Department Chair - maintains qualification status + 4 years after stepping down', TRUE, 4),
+    ('Heavy Administrative Load', 'Significant administrative responsibilities - maintains qualification + 4 years after stepping down', TRUE, 4);
+
+-- Programme Leader: Reduced requirements (not full exemption)
+-- SA: 4 ICs (1 PRJ), PA: 3 activities, SP: 3 ICs (1 PRJ), IP: 3 activities
+INSERT IGNORE INTO exemption_types (name, description, reduces_ic_requirement, reduces_prj_requirement, reduces_activity_requirement, ic_reduction, prj_reduction, activity_reduction) VALUES
+    ('Programme Leader', 'Serving as Programme Leader - reduced requirements while serving', TRUE, TRUE, TRUE, 2, 2, 3);
 
 INSERT IGNORE INTO exemption_types (name, description, reduces_activity_requirement, activity_reduction) VALUES
     ('Research Leave', 'On research leave - reduced professional activity requirements', TRUE, 3);
