@@ -1,0 +1,20 @@
+{
+  "Sign in to continue": "Logg inn for å fortsette",
+  "Email address": "E-postadresse",
+  "Send login link": "Send innloggingslenke",
+  "Check your email for a login link. It will expire in 15 minutes.": "Sjekk e-posten din for en innloggingslenke. Den utløper om 15 minutter.",
+  "Use a different email": "Bruk en annen e-post",
+  "Sign in with passkey": "Logg inn med passkey",
+  "or": "eller",
+  "Sign in with password": "Logg inn med passord",
+  "Password": "Passord",
+  "Sign in": "Logg inn",
+  "Sign in with Google": "Logg inn med Google",
+
+  "Failed to send login link": "Kunne ikke sende innloggingslenke",
+  "Network error. Please try again.": "Nettverksfeil. Vennligst prøv igjen.",
+  "Invalid credentials": "Ugyldig e-post eller passord",
+  "Passkey authentication failed": "Passkey-autentisering mislyktes",
+  "Passkey authentication failed. Please try another login method.": "Passkey-autentisering mislyktes. Vennligst prøv en annen innloggingsmetode.",
+  "Failed to start passkey authentication": "Kunne ikke starte passkey-autentisering"
+}

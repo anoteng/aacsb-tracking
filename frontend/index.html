@@ -5,62 +5,70 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - AACSB Accreditation</title>
     <link rel="stylesheet" href="/aacsb/static/css/style.css">
+    <script src="/aacsb/static/js/i18n.js"></script>
 </head>
 <body>
     <div class="login-container">
         <div class="login-card">
+            <div style="display:flex; justify-content:flex-end; margin-bottom:1rem;">
+                <select id="lang-switcher" onchange="i18n.setLang(this.value)" style="padding:0.25rem 0.5rem; border:1px solid #ccc; border-radius:4px; font-size:0.875rem;">
+                    <option value="en">EN</option>
+                    <option value="no">NO</option>
+                </select>
+            </div>
+
             <h1>AACSB Accreditation</h1>
-            <p class="subtitle">Sign in to continue</p>
+            <p class="subtitle" data-i18n="Sign in to continue">Sign in to continue</p>
 
             <div id="alert-container"></div>
 
             <!-- Magic Link Form -->
             <form id="magic-link-form">
                 <div class="form-group">
-                    <label class="form-label" for="email">Email address</label>
+                    <label class="form-label" for="email" data-i18n="Email address">Email address</label>
                     <input type="email" id="email" class="form-input" placeholder="your.email@nmbu.no" required>
                 </div>
-                <button type="submit" class="btn btn-primary btn-lg" style="width: 100%;">
+                <button type="submit" class="btn btn-primary btn-lg" style="width: 100%;" data-i18n="Send login link">
                     Send login link
                 </button>
             </form>
 
             <div id="magic-link-sent" class="hidden">
-                <div class="alert alert-success">
+                <div class="alert alert-success" data-i18n="Check your email for a login link. It will expire in 15 minutes.">
                     Check your email for a login link. It will expire in 15 minutes.
                 </div>
-                <button onclick="showLoginForm()" class="btn btn-outline" style="width: 100%;">
+                <button onclick="showLoginForm()" class="btn btn-outline" style="width: 100%;" data-i18n="Use a different email">
                     Use a different email
                 </button>
             </div>
 
             <!-- Passkey Login -->
             <div id="passkey-section" class="hidden" style="margin-top: 1rem;">
-                <button type="button" class="btn btn-outline btn-lg" style="width: 100%;" onclick="loginWithPasskey()">
+                <button type="button" class="btn btn-outline btn-lg" style="width: 100%;" onclick="loginWithPasskey()" data-i18n="Sign in with passkey">
                     Sign in with passkey
                 </button>
             </div>
 
             <div class="login-divider">
-                <span>or</span>
+                <span data-i18n="or">or</span>
             </div>
 
             <!-- Password Login (collapsible) -->
             <div id="password-section">
-                <button type="button" class="btn btn-outline" style="width: 100%;" onclick="togglePasswordLogin()">
+                <button type="button" class="btn btn-outline" style="width: 100%;" onclick="togglePasswordLogin()" data-i18n="Sign in with password">
                     Sign in with password
                 </button>
 
                 <form id="password-form" class="hidden" style="margin-top: 1rem;">
                     <div class="form-group">
-                        <label class="form-label" for="password-email">Email address</label>
+                        <label class="form-label" for="password-email" data-i18n="Email address">Email address</label>
                         <input type="email" id="password-email" class="form-input" required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label" for="password">Password</label>
+                        <label class="form-label" for="password" data-i18n="Password">Password</label>
                         <input type="password" id="password" class="form-input" required>
                     </div>
-                    <button type="submit" class="btn btn-primary btn-lg" style="width: 100%;">
+                    <button type="submit" class="btn btn-primary btn-lg" style="width: 100%;" data-i18n="Sign in">
                         Sign in
                     </button>
                 </form>
@@ -75,13 +83,16 @@
                         <path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
                         <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
                     </svg>
-                    Sign in with Google
+                    <span data-i18n="Sign in with Google">Sign in with Google</span>
                 </a>
             </div>
         </div>
     </div>
 
     <script>
+        i18n.init();
+        const { t } = i18n;
+
         const API_BASE = '/aacsb/api';
 
         // Check if Google OAuth is configured
@@ -127,10 +138,10 @@
                     document.getElementById('magic-link-sent').classList.remove('hidden');
                 } else {
                     const data = await response.json();
-                    showAlert(data.detail || 'Failed to send login link');
+                    showAlert(data.detail || t('Failed to send login link'));
                 }
             } catch (error) {
-                showAlert('Network error. Please try again.');
+                showAlert(t('Network error. Please try again.'));
             }
         });
 
@@ -152,10 +163,10 @@
                     window.location.href = '/aacsb/aol';
                 } else {
                     const data = await response.json();
-                    showAlert(data.detail || 'Invalid credentials');
+                    showAlert(data.detail || t('Invalid credentials'));
                 }
             } catch (error) {
-                showAlert('Network error. Please try again.');
+                showAlert(t('Network error. Please try again.'));
             }
         });
 
@@ -171,7 +182,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                 });
-                if (!beginRes.ok) throw new Error('Failed to start passkey authentication');
+                if (!beginRes.ok) throw new Error(t('Failed to start passkey authentication'));
                 const options = await beginRes.json();
 
                 // Convert base64url strings to ArrayBuffers for the browser API
@@ -197,13 +208,13 @@
                     window.location.href = '/aacsb/aol';
                 } else {
                     const data = await completeRes.json();
-                    showAlert(data.detail || 'Passkey authentication failed');
+                    showAlert(data.detail || t('Passkey authentication failed'));
                 }
             } catch (err) {
                 if (err.name === 'NotAllowedError') {
                     // User cancelled — don't show an error
                 } else {
-                    showAlert('Passkey authentication failed. Please try another login method.');
+                    showAlert(t('Passkey authentication failed. Please try another login method.'));
                 }
             }
         }
