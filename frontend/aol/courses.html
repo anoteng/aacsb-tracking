@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Courses - AACSB Accreditation</title>
     <link rel="stylesheet" href="/aacsb/static/css/style.css">
+    <script src="/aacsb/static/js/i18n.js"></script>
     <style>
         .courses-layout {
             display: grid;
@@ -78,17 +79,21 @@
             <a href="/aacsb/aol" class="nav-brand">AACSB Accreditation</a>
             <ul class="nav-links">
                 <li><a href="/aacsb/aol">AOL</a></li>
-                <li><a href="/aacsb/aol/courses" class="active">Courses</a></li>
-                <li><a href="/aacsb/research">Research</a></li>
+                <li><a href="/aacsb/aol/courses" class="active" data-i18n="Courses">Courses</a></li>
+                <li><a href="/aacsb/research" data-i18n="Research">Research</a></li>
             </ul>
             <div class="nav-user" id="nav-user"><span>Loading...</span></div>
+            <select id="lang-switcher" onchange="i18n.setLang(this.value)" style="margin-left:0.5rem; padding:0.25rem 0.5rem; border:1px solid rgba(255,255,255,0.3); border-radius:4px; font-size:0.875rem; background:transparent; color:white;">
+                <option value="en">EN</option>
+                <option value="no">NO</option>
+            </select>
         </div>
     </nav>
 
     <header class="page-header">
         <div class="container">
-            <h1 class="page-title">Courses</h1>
-            <p class="page-subtitle">Course catalogue with coordinators, programmes, and learning goals</p>
+            <h1 class="page-title" data-i18n="Courses">Courses</h1>
+            <p class="page-subtitle" data-i18n="Course catalogue with coordinators, programmes, and learning goals">Course catalogue with coordinators, programmes, and learning goals</p>
         </div>
     </header>
 
@@ -97,7 +102,7 @@
             <!-- Left: course list -->
             <div class="course-list-panel card" style="padding: 1rem;">
                 <div class="search-box">
-                    <input type="text" id="course-search" class="form-input" placeholder="Search by code or name…">
+                    <input type="text" id="course-search" class="form-input" placeholder="Search by code or name…" data-i18n-placeholder="Search by code or name…">
                 </div>
                 <ul class="course-list" id="course-list">
                     <li><div class="loading"><div class="spinner"></div></div></li>
@@ -106,7 +111,7 @@
 
             <!-- Right: course detail -->
             <div id="course-detail">
-                <div class="empty-detail">Select a course to see details</div>
+                <div class="empty-detail" data-i18n="Select a course to see details">Select a course to see details</div>
             </div>
         </div>
     </main>
@@ -115,29 +120,33 @@
     <div id="add-coord-modal" class="modal-overlay" style="display:none;">
         <div class="modal">
             <div class="modal-header">
-                <h2 id="add-coord-title">Set Course Coordinator</h2>
+                <h2 id="add-coord-title" data-i18n="Set Course Coordinator">Set Course Coordinator</h2>
                 <button class="modal-close" onclick="closeCoordModal()">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
-                    <label class="form-label">Staff member</label>
-                    <input type="text" id="coord-user-search" class="form-input" placeholder="Search by name or email…">
+                    <label class="form-label" data-i18n="Staff member">Staff member</label>
+                    <input type="text" id="coord-user-search" class="form-input" placeholder="Search by name or email…" data-i18n-placeholder="Search by name or email…">
                     <div id="coord-user-results" style="margin-top:0.5rem;"></div>
                     <input type="hidden" id="coord-user-id">
                     <div id="coord-user-selected" class="text-sm text-muted" style="margin-top:0.25rem;"></div>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Start date <span class="text-muted">(optional)</span></label>
+                    <label class="form-label">
+                        <span data-i18n="Start date">Start date</span> <span class="text-muted" data-i18n="(optional)">(optional)</span>
+                    </label>
                     <input type="date" id="coord-start-date" class="form-input">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">End date <span class="text-muted">(optional)</span></label>
+                    <label class="form-label">
+                        <span data-i18n="End date">End date</span> <span class="text-muted" data-i18n="(optional)">(optional)</span>
+                    </label>
                     <input type="date" id="coord-end-date" class="form-input">
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-outline" onclick="closeCoordModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="saveCoordinator()">Save</button>
+                <button class="btn btn-outline" onclick="closeCoordModal()" data-i18n="Cancel">Cancel</button>
+                <button class="btn btn-primary" onclick="saveCoordinator()" data-i18n="Save">Save</button>
             </div>
         </div>
     </div>
@@ -146,29 +155,32 @@
     <div id="edit-coord-modal" class="modal-overlay" style="display:none;">
         <div class="modal">
             <div class="modal-header">
-                <h2>Edit Coordinator Dates</h2>
+                <h2 data-i18n="Edit Coordinator Dates">Edit Coordinator Dates</h2>
                 <button class="modal-close" onclick="closeEditCoordModal()">&times;</button>
             </div>
             <div class="modal-body">
                 <input type="hidden" id="edit-coord-id">
                 <div class="form-group">
-                    <label class="form-label">Start date</label>
+                    <label class="form-label" data-i18n="Start date">Start date</label>
                     <input type="date" id="edit-coord-start" class="form-input">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">End date</label>
+                    <label class="form-label" data-i18n="End date">End date</label>
                     <input type="date" id="edit-coord-end" class="form-input">
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-outline" onclick="closeEditCoordModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="saveEditCoord()">Save</button>
+                <button class="btn btn-outline" onclick="closeEditCoordModal()" data-i18n="Cancel">Cancel</button>
+                <button class="btn btn-primary" onclick="saveEditCoord()" data-i18n="Save">Save</button>
             </div>
         </div>
     </div>
 
     <script src="/aacsb/static/aol/js/api.js"></script>
     <script>
+        i18n.init();
+        const { t } = i18n;
+
         const API = '/aacsb/api';
         let currentUser = null;
         let isAdmin = false;
@@ -176,7 +188,7 @@
         let selectedCourseId = null;
         let coordSearchTimeout = null;
 
-        const LEVEL_LABELS = { 1: 'Introduced', 2: 'Developing', 3: 'Mastery' };
+        const LEVEL_KEYS = { 1: 'Introduced', 2: 'Developing', 3: 'Mastery' };
 
         async function init() {
             try {
@@ -192,8 +204,8 @@
         function renderNav() {
             document.getElementById('nav-user').innerHTML = `
                 <span>${currentUser.firstname} ${currentUser.lastname}</span>
-                <a href="/aacsb/aol/settings" class="btn btn-sm btn-outline" style="color:white;border-color:rgba(255,255,255,0.3);">Settings</a>
-                <button onclick="api.logout().then(()=>window.location.href='/aacsb/login')" class="btn btn-sm btn-outline" style="color:white;border-color:rgba(255,255,255,0.3);">Logout</button>
+                <a href="/aacsb/aol/settings" class="btn btn-sm btn-outline" style="color:white;border-color:rgba(255,255,255,0.3);">${t('Settings')}</a>
+                <button onclick="api.logout().then(()=>window.location.href='/aacsb/login')" class="btn btn-sm btn-outline" style="color:white;border-color:rgba(255,255,255,0.3);">${t('Logout')}</button>
             `;
             if (currentUser.roles.includes('system_admin')) {
                 const navLinks = document.querySelector('.nav-links');
@@ -214,7 +226,7 @@
         function renderCourseList(courses) {
             const ul = document.getElementById('course-list');
             if (courses.length === 0) {
-                ul.innerHTML = '<li style="color:var(--text-muted);padding:1rem;">No courses found</li>';
+                ul.innerHTML = `<li style="color:var(--text-muted);padding:1rem;">${t('No courses found')}</li>`;
                 return;
             }
             ul.innerHTML = courses.map(c => `
@@ -256,19 +268,19 @@
 
                     <div class="detail-section">
                         <h3>
-                            Course Coordinator
-                            ${isAdmin ? `<button class="btn btn-sm btn-primary" style="float:right;" onclick="openAddCoord(${course.id})">+ Add</button>` : ''}
+                            ${t('Course Coordinator')}
+                            ${isAdmin ? `<button class="btn btn-sm btn-primary" style="float:right;" onclick="openAddCoord(${course.id})">${t('+ Add')}</button>` : ''}
                         </h3>
                         ${coordinatorSection}
                     </div>
 
                     <div class="detail-section">
-                        <h3>Study Programmes</h3>
+                        <h3>${t('Study Programmes')}</h3>
                         ${programmesSection}
                     </div>
 
                     <div class="detail-section">
-                        <h3>Learning Goals</h3>
+                        <h3>${t('Learning Goals')}</h3>
                         ${goalsSection}
                     </div>
                 </div>
@@ -277,24 +289,24 @@
 
         function renderCoordinators(course) {
             if (course.coordinators.length === 0) {
-                return '<p class="text-muted">No coordinator assigned.</p>';
+                return `<p class="text-muted">${t('No coordinator assigned.')}</p>`;
             }
             return course.coordinators.map(cc => `
                 <div class="coord-row">
                     <div>
                         <strong>${cc.name}</strong>
-                        <span class="${cc.is_current ? 'badge-current' : 'badge-past'}">${cc.is_current ? 'Current' : 'Past'}</span>
+                        <span class="${cc.is_current ? 'badge-current' : 'badge-past'}">${cc.is_current ? t('Current') : t('Past')}</span>
                         <div class="text-sm text-muted">
                             ${cc.email}
                             ${cc.start_date || cc.end_date
-                                ? ' · ' + (cc.start_date ? formatDate(cc.start_date) : '?') + ' – ' + (cc.end_date ? formatDate(cc.end_date) : 'present')
+                                ? ' · ' + (cc.start_date ? formatDate(cc.start_date) : '?') + ' – ' + (cc.end_date ? formatDate(cc.end_date) : t('present'))
                                 : ''}
                         </div>
                     </div>
                     ${isAdmin ? `
                         <div class="coord-actions">
-                            <button class="btn btn-sm btn-outline" onclick="openEditCoord(${cc.id}, '${cc.start_date || ''}', '${cc.end_date || ''}')">Edit dates</button>
-                            <button class="btn btn-sm btn-outline" style="color:var(--danger);" onclick="removeCoord(${course.id}, ${cc.id})">Remove</button>
+                            <button class="btn btn-sm btn-outline" onclick="openEditCoord(${cc.id}, '${cc.start_date || ''}', '${cc.end_date || ''}')">${t('Edit dates')}</button>
+                            <button class="btn btn-sm btn-outline" style="color:var(--danger);" onclick="removeCoord(${course.id}, ${cc.id})">${t('Remove')}</button>
                         </div>
                     ` : ''}
                 </div>
@@ -302,12 +314,12 @@
         }
 
         function renderProgrammes(programmes) {
-            if (programmes.length === 0) return '<p class="text-muted">Not linked to any programme.</p>';
+            if (programmes.length === 0) return `<p class="text-muted">${t('Not linked to any programme.')}</p>`;
             return `<table style="width:100%;font-size:0.875rem;">
                 <thead><tr>
-                    <th style="text-align:left;padding:0.35rem 0;">Code</th>
-                    <th style="text-align:left;padding:0.35rem 0;">Programme</th>
-                    <th style="text-align:left;padding:0.35rem 0;">Semester</th>
+                    <th style="text-align:left;padding:0.35rem 0;">${t('Code')}</th>
+                    <th style="text-align:left;padding:0.35rem 0;">${t('Programme')}</th>
+                    <th style="text-align:left;padding:0.35rem 0;">${t('Semester')}</th>
                 </tr></thead>
                 <tbody>
                 ${programmes.map(p => `
@@ -322,22 +334,23 @@
         }
 
         function renderGoals(goals) {
-            if (goals.length === 0) return '<p class="text-muted">Not mapped to any learning goals.</p>';
+            if (goals.length === 0) return `<p class="text-muted">${t('Not mapped to any learning goals.')}</p>`;
             return goals.map(g => `
                 <div class="goal-row">
-                    <span class="level-badge level-${g.learning_level}">${LEVEL_LABELS[g.learning_level] || ''}</span>
+                    <span class="level-badge level-${g.learning_level}">${t(LEVEL_KEYS[g.learning_level] || '')}</span>
                     <div>
                         <div class="text-sm text-muted">${g.programme_code}</div>
                         <div>${g.goal_no || g.goal_eng || ''}</div>
                     </div>
-                    ${g.is_assessed ? '<span class="assessed-dot" title="Assessed">● Assessed</span>' : '<span></span>'}
+                    ${g.is_assessed ? `<span class="assessed-dot" title="${t('Assessed')}">● ${t('Assessed')}</span>` : '<span></span>'}
                 </div>
             `).join('');
         }
 
         function formatDate(iso) {
             if (!iso) return '';
-            return new Date(iso).toLocaleDateString('no-NO', { year: 'numeric', month: 'short', day: 'numeric' });
+            const locale = i18n.getLang() === 'no' ? 'no-NO' : 'en-GB';
+            return new Date(iso).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' });
         }
 
         // --- Search ---
@@ -412,7 +425,7 @@
 
         async function saveCoordinator() {
             const userId = document.getElementById('coord-user-id').value;
-            if (!userId) { alert('Please select a staff member.'); return; }
+            if (!userId) { alert(t('Please select a staff member.')); return; }
             const start = document.getElementById('coord-start-date').value;
             const end = document.getElementById('coord-end-date').value;
 
@@ -429,7 +442,7 @@
                 loadCourses();
             } else {
                 const d = await res.json();
-                alert('Error: ' + (d.detail || 'Could not save'));
+                alert(t('Error: ') + (d.detail || t('Could not save')));
             }
         }
 
@@ -467,12 +480,12 @@
                 selectCourse(selectedCourseId);
             } else {
                 const d = await res.json();
-                alert('Error: ' + (d.detail || 'Could not update'));
+                alert(t('Error: ') + (d.detail || t('Could not update')));
             }
         }
 
         async function removeCoord(courseId, coordId) {
-            if (!confirm('Remove this coordinator entry?')) return;
+            if (!confirm(t('Remove this coordinator entry?'))) return;
             const res = await fetch(`${API}/aol/courses/${courseId}/coordinators/${coordId}`, {
                 method: 'DELETE',
                 credentials: 'include',
@@ -481,7 +494,7 @@
                 selectCourse(courseId);
                 loadCourses();
             } else {
-                alert('Could not remove coordinator.');
+                alert(t('Could not remove coordinator.'));
             }
         }
 
