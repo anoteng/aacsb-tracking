@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Settings - AACSB Accreditation</title>
     <link rel="stylesheet" href="/aacsb/static/css/style.css">
+    <script src="/aacsb/static/js/i18n.js"></script>
 </head>
 <body>
     <nav class="nav">
@@ -12,20 +13,24 @@
             <a href="/aacsb/aol" class="nav-brand">AACSB Accreditation</a>
             <ul class="nav-links">
                 <li><a href="/aacsb/aol">AOL</a></li>
-                <li><a href="/aacsb/aol/courses">Courses</a></li>
-                <li><a href="/aacsb/research">Research</a></li>
+                <li><a href="/aacsb/aol/courses" data-i18n="Courses">Courses</a></li>
+                <li><a href="/aacsb/research" data-i18n="Research">Research</a></li>
             </ul>
             <div class="nav-user" id="nav-user">
                 <span>Loading...</span>
             </div>
+            <select id="lang-switcher" onchange="i18n.setLang(this.value)" style="margin-left:0.5rem; padding:0.25rem 0.5rem; border:1px solid rgba(255,255,255,0.3); border-radius:4px; font-size:0.875rem; background:transparent; color:white;">
+                <option value="en">EN</option>
+                <option value="no">NO</option>
+            </select>
         </div>
     </nav>
 
     <header class="page-header">
         <div class="container">
             <div>
-                <h1 class="page-title">Account Settings</h1>
-                <p class="page-subtitle">Manage your login methods and profile</p>
+                <h1 class="page-title" data-i18n="Account Settings">Account Settings</h1>
+                <p class="page-subtitle" data-i18n="Manage your login methods and profile">Manage your login methods and profile</p>
             </div>
         </div>
     </header>
@@ -35,7 +40,7 @@
             <!-- Profile Info -->
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Profile</h2>
+                    <h2 class="card-title" data-i18n="Profile">Profile</h2>
                 </div>
                 <div id="profile-info">
                     <div class="loading"><div class="spinner"></div></div>
@@ -45,31 +50,31 @@
             <!-- Password Settings -->
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Password</h2>
+                    <h2 class="card-title" data-i18n="Password">Password</h2>
                 </div>
-                <p class="text-sm text-muted mb-2">
+                <p class="text-sm text-muted mb-2" data-i18n="Set a password to enable password login in addition to magic links.">
                     Set a password to enable password login in addition to magic links.
                 </p>
                 <div id="password-status" class="mb-2"></div>
                 <form id="password-form">
                     <div class="form-group">
-                        <label class="form-label">New Password</label>
+                        <label class="form-label" data-i18n="New Password">New Password</label>
                         <input type="password" id="new-password" class="form-input" minlength="8" required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Confirm Password</label>
+                        <label class="form-label" data-i18n="Confirm Password">Confirm Password</label>
                         <input type="password" id="confirm-password" class="form-input" minlength="8" required>
                     </div>
-                    <button type="submit" class="btn btn-primary">Set Password</button>
+                    <button type="submit" class="btn btn-primary" data-i18n="Set Password">Set Password</button>
                 </form>
             </div>
 
             <!-- Google Account -->
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Google Account</h2>
+                    <h2 class="card-title" data-i18n="Google Account">Google Account</h2>
                 </div>
-                <p class="text-sm text-muted mb-2">
+                <p class="text-sm text-muted mb-2" data-i18n="Link your Google account for one-click sign in.">
                     Link your Google account for one-click sign in.
                 </p>
                 <div id="google-status">
@@ -80,23 +85,23 @@
             <!-- Login Sessions -->
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Active Sessions</h2>
+                    <h2 class="card-title" data-i18n="Active Sessions">Active Sessions</h2>
                 </div>
-                <p class="text-sm text-muted mb-2">
+                <p class="text-sm text-muted mb-2" data-i18n="Your currently active login sessions.">
                     Your currently active login sessions.
                 </p>
                 <div id="sessions-list">
-                    <p class="text-muted">Current session only</p>
+                    <p class="text-muted" data-i18n="Current session only">Current session only</p>
                 </div>
             </div>
 
             <!-- Passkeys -->
             <div class="card" id="passkey-card" style="display: none;">
                 <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
-                    <h2 class="card-title">Passkeys</h2>
-                    <button class="btn btn-sm btn-primary" onclick="registerPasskey()">+ Add passkey</button>
+                    <h2 class="card-title" data-i18n="Passkeys">Passkeys</h2>
+                    <button class="btn btn-sm btn-primary" onclick="registerPasskey()" data-i18n="+ Add passkey">+ Add passkey</button>
                 </div>
-                <p class="text-sm text-muted mb-2">
+                <p class="text-sm text-muted mb-2" data-i18n="Use biometrics or a device PIN to sign in without a password or magic link.">
                     Use biometrics or a device PIN to sign in without a password or magic link.
                 </p>
                 <div id="passkeys-list">
@@ -108,6 +113,9 @@
 
     <script src="/aacsb/static/aol/js/api.js"></script>
     <script>
+        i18n.init();
+        const { t } = i18n;
+
         let user = null;
 
         async function init() {
@@ -126,10 +134,10 @@
             document.getElementById('nav-user').innerHTML = `
                 <span>${user.firstname} ${user.lastname}</span>
                 <a href="/aacsb/aol/settings" class="btn btn-sm btn-outline" style="color: white; border-color: rgba(255,255,255,0.3);">
-                    Settings
+                    ${t('Settings')}
                 </a>
                 <button onclick="logout()" class="btn btn-sm btn-outline" style="color: white; border-color: rgba(255,255,255,0.3);">
-                    Logout
+                    ${t('Logout')}
                 </button>
             `;
 
@@ -153,24 +161,24 @@
             document.getElementById('profile-info').innerHTML = `
                 <table style="width: 100%;">
                     <tr>
-                        <td class="text-muted" style="width: 100px;">Name</td>
+                        <td class="text-muted" style="width: 100px;">${t('Name')}</td>
                         <td><strong>${user.firstname} ${user.lastname}</strong></td>
                     </tr>
                     <tr>
-                        <td class="text-muted">Email</td>
+                        <td class="text-muted">${t('Email')}</td>
                         <td>${user.email}</td>
                     </tr>
                     <tr>
-                        <td class="text-muted">Roles</td>
-                        <td>${user.roles.length > 0 ? user.roles.join(', ') : '<em>No roles assigned</em>'}</td>
+                        <td class="text-muted">${t('Roles')}</td>
+                        <td>${user.roles.length > 0 ? user.roles.join(', ') : `<em>${t('No roles assigned')}</em>`}</td>
                     </tr>
                 </table>
             `;
 
             // Password status
             document.getElementById('password-status').innerHTML = user.has_password
-                ? '<span class="text-success">Password is set</span>'
-                : '<span class="text-muted">No password set (using magic link only)</span>';
+                ? `<span class="text-success">${t('Password is set')}</span>`
+                : `<span class="text-muted">${t('No password set (using magic link only)')}</span>`;
         }
 
         async function checkGoogleStatus() {
@@ -183,7 +191,7 @@
 
                 if (!data.configured) {
                     container.innerHTML = `
-                        <p class="text-muted">Google sign-in is not configured on this server.</p>
+                        <p class="text-muted">${t('Google sign-in is not configured on this server.')}</p>
                     `;
                     return;
                 }
@@ -191,13 +199,13 @@
                 if (data.linked) {
                     container.innerHTML = `
                         <div class="alert alert-success">
-                            Google account linked: ${data.google_email || 'Connected'}
+                            ${t('Google account linked: {{email}}', { email: data.google_email || t('Connected') })}
                         </div>
-                        <button onclick="unlinkGoogle()" class="btn btn-outline btn-sm">Unlink Google Account</button>
+                        <button onclick="unlinkGoogle()" class="btn btn-outline btn-sm">${t('Unlink Google Account')}</button>
                     `;
                 } else {
                     container.innerHTML = `
-                        <p class="mb-2">No Google account linked.</p>
+                        <p class="mb-2">${t('No Google account linked.')}</p>
                         <a href="/aacsb/api/auth/google/link" class="btn btn-outline">
                             <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style="vertical-align: middle; margin-right: 8px;">
                                 <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
@@ -205,23 +213,23 @@
                                 <path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
                                 <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
                             </svg>
-                            Link Google Account
+                            ${t('Link Google Account')}
                         </a>
                     `;
                 }
             } catch (error) {
-                container.innerHTML = `<p class="text-muted">Could not check Google status.</p>`;
+                container.innerHTML = `<p class="text-muted">${t('Could not check Google status.')}</p>`;
             }
         }
 
         async function unlinkGoogle() {
-            if (!confirm('Are you sure you want to unlink your Google account?')) return;
+            if (!confirm(t('Are you sure you want to unlink your Google account?'))) return;
 
             try {
                 await api.request('/auth/google/unlink', { method: 'POST' });
                 checkGoogleStatus();
             } catch (error) {
-                alert('Failed to unlink: ' + error.message);
+                alert(t('Failed to unlink: ') + error.message);
             }
         }
 
@@ -233,22 +241,22 @@
             const confirmPassword = document.getElementById('confirm-password').value;
 
             if (newPassword !== confirmPassword) {
-                alert('Passwords do not match');
+                alert(t('Passwords do not match'));
                 return;
             }
 
             if (newPassword.length < 8) {
-                alert('Password must be at least 8 characters');
+                alert(t('Password must be at least 8 characters'));
                 return;
             }
 
             try {
                 await api.setPassword(newPassword);
-                alert('Password set successfully!');
+                alert(t('Password set successfully!'));
                 document.getElementById('password-form').reset();
-                document.getElementById('password-status').innerHTML = '<span class="text-success">Password is set</span>';
+                document.getElementById('password-status').innerHTML = `<span class="text-success">${t('Password is set')}</span>`;
             } catch (error) {
-                alert('Failed to set password: ' + error.message);
+                alert(t('Failed to set password: ') + error.message);
             }
         });
 
@@ -299,7 +307,7 @@
                 const res = await fetch('/aacsb/api/auth/passkey/list', { credentials: 'include' });
                 const passkeys = await res.json();
                 if (passkeys.length === 0) {
-                    container.innerHTML = '<p class="text-muted">No passkeys registered yet.</p>';
+                    container.innerHTML = `<p class="text-muted">${t('No passkeys registered yet.')}</p>`;
                     return;
                 }
                 container.innerHTML = passkeys.map(pk => `
@@ -307,20 +315,20 @@
                         <div>
                             <strong>${pk.name}</strong>
                             <div class="text-sm text-muted">
-                                Added ${new Date(pk.created_at).toLocaleDateString()}
-                                ${pk.last_used_at ? ' · Last used ' + new Date(pk.last_used_at).toLocaleDateString() : ''}
+                                ${t('Added')} ${new Date(pk.created_at).toLocaleDateString()}
+                                ${pk.last_used_at ? ' · ' + t('Last used') + ' ' + new Date(pk.last_used_at).toLocaleDateString() : ''}
                             </div>
                         </div>
-                        <button class="btn btn-sm btn-outline" onclick="deletePasskey(${pk.id}, this)">Delete</button>
+                        <button class="btn btn-sm btn-outline" onclick="deletePasskey(${pk.id}, this)">${t('Delete')}</button>
                     </div>
                 `).join('');
             } catch (e) {
-                container.innerHTML = '<p class="text-muted">Could not load passkeys.</p>';
+                container.innerHTML = `<p class="text-muted">${t('Could not load passkeys.')}</p>`;
             }
         }
 
         async function registerPasskey() {
-            const name = prompt('Name this passkey (e.g. "MacBook", "iPhone"):', 'Passkey');
+            const name = prompt(t('Name this passkey (e.g. "MacBook", "iPhone"):'), t('Passkey'));
             if (name === null) return;
 
             try {
@@ -328,7 +336,7 @@
                     method: 'POST',
                     credentials: 'include',
                 });
-                if (!beginRes.ok) throw new Error('Failed to start registration');
+                if (!beginRes.ok) throw new Error(t('Failed to start registration'));
                 const options = await beginRes.json();
 
                 options.challenge = base64urlToBuffer(options.challenge);
@@ -345,24 +353,24 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
-                    body: JSON.stringify({ credential: credentialToJSON(credential), name: name || 'Passkey' }),
+                    body: JSON.stringify({ credential: credentialToJSON(credential), name: name || t('Passkey') }),
                 });
 
                 if (completeRes.ok) {
                     loadPasskeys();
                 } else {
                     const data = await completeRes.json();
-                    alert('Registration failed: ' + (data.detail || 'Unknown error'));
+                    alert(t('Registration failed: ') + (data.detail || t('Unknown error')));
                 }
             } catch (err) {
                 if (err.name !== 'NotAllowedError') {
-                    alert('Passkey registration failed: ' + err.message);
+                    alert(t('Passkey registration failed: ') + err.message);
                 }
             }
         }
 
         async function deletePasskey(id, btn) {
-            if (!confirm('Delete this passkey?')) return;
+            if (!confirm(t('Delete this passkey?'))) return;
             btn.disabled = true;
             try {
                 const res = await fetch(`/aacsb/api/auth/passkey/${id}`, {
@@ -373,11 +381,11 @@
                     loadPasskeys();
                 } else {
                     const data = await res.json();
-                    alert('Failed to delete: ' + (data.detail || 'Unknown error'));
+                    alert(t('Failed to delete: ') + (data.detail || t('Unknown error')));
                     btn.disabled = false;
                 }
             } catch (e) {
-                alert('Failed to delete passkey.');
+                alert(t('Failed to delete passkey.'));
                 btn.disabled = false;
             }
         }
