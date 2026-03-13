@@ -33,6 +33,10 @@ class Settings(BaseSettings):
     google_client_id: str | None = None
     google_client_secret: str | None = None
 
+    # WebAuthn / Passkeys
+    webauthn_rp_id: str = "hh-utdanning.nmbu.no"
+    webauthn_rp_name: str = "AACSB Accreditation"
+
     # NVA API (Norwegian Research Archive)
     nva_client_id: str | None = None
     nva_client_secret: str | None = None

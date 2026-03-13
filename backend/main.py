@@ -6,6 +6,7 @@ import os
 
 from config import get_settings
 from routers import auth_router, aol_router, users_router, admin_router, research_router
+from routers.passkey import router as passkey_router
 
 settings = get_settings()
 
@@ -31,6 +32,7 @@ app.include_router(users_router, prefix="/api")
 app.include_router(aol_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")
 app.include_router(research_router, prefix="/api")
+app.include_router(passkey_router, prefix="/api")
 
 
 # Health check
@@ -66,6 +68,14 @@ async def aol_programme(programme_id: int):
     if os.path.exists(page_path):
         return FileResponse(page_path)
     return {"message": "Programme page not found"}
+
+
+@app.get("/aol/courses")
+async def aol_courses():
+    page_path = os.path.join(frontend_path, "aol", "courses.html")
+    if os.path.exists(page_path):
+        return FileResponse(page_path)
+    return {"message": "Courses page not found"}
 
 
 @app.get("/aol/settings")

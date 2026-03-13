@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Numeric
+from sqlalchemy import Column, Integer, String, DateTime, Date, ForeignKey, Numeric
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
@@ -65,6 +65,8 @@ class CourseCoordinator(Base):
     user_id = Column(Integer, ForeignKey("users.uuid"), nullable=False)
     assigned_at = Column(DateTime, server_default=func.now())
     assigned_by = Column(Integer, ForeignKey("users.uuid"))
+    start_date = Column(Date, nullable=True)
+    end_date = Column(Date, nullable=True)
 
     # Relationships
     course = relationship("Course", back_populates="coordinators")

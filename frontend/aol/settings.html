@@ -12,6 +12,7 @@
             <a href="/aacsb/aol" class="nav-brand">AACSB Accreditation</a>
             <ul class="nav-links">
                 <li><a href="/aacsb/aol">AOL</a></li>
+                <li><a href="/aacsb/aol/courses">Courses</a></li>
                 <li><a href="/aacsb/research">Research</a></li>
             </ul>
             <div class="nav-user" id="nav-user">
@@ -88,6 +89,20 @@
                     <p class="text-muted">Current session only</p>
                 </div>
             </div>
+
+            <!-- Passkeys -->
+            <div class="card" id="passkey-card" style="display: none;">
+                <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <h2 class="card-title">Passkeys</h2>
+                    <button class="btn btn-sm btn-primary" onclick="registerPasskey()">+ Add passkey</button>
+                </div>
+                <p class="text-sm text-muted mb-2">
+                    Use biometrics or a device PIN to sign in without a password or magic link.
+                </p>
+                <div id="passkeys-list">
+                    <div class="loading"><div class="spinner"></div></div>
+                </div>
+            </div>
         </div>
     </main>
 
@@ -101,6 +116,7 @@
                 renderNav();
                 renderProfile();
                 checkGoogleStatus();
+                initPasskeys();
             } catch (error) {
                 window.location.href = '/aacsb/login';
             }
@@ -235,6 +251,136 @@
                 alert('Failed to set password: ' + error.message);
             }
         });
+
+        // ---- Passkey helpers ----
+        function base64urlToBuffer(base64url) {
+            const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+            const binary = atob(base64);
+            const buf = new ArrayBuffer(binary.length);
+            const view = new Uint8Array(buf);
+            for (let i = 0; i < binary.length; i++) view[i] = binary.charCodeAt(i);
+            return buf;
+        }
+
+        function bufferToBase64url(buffer) {
+            const bytes = new Uint8Array(buffer);
+            let binary = '';
+            for (const b of bytes) binary += String.fromCharCode(b);
+            return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+        }
+
+        function credentialToJSON(credential) {
+            return {
+                id: credential.id,
+                rawId: bufferToBase64url(credential.rawId),
+                type: credential.type,
+                response: {
+                    clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
+                    attestationObject: bufferToBase64url(credential.response.attestationObject),
+                },
+            };
+        }
+
+        function initPasskeys() {
+            if (!window.PublicKeyCredential) return;
+            PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
+                .then(available => {
+                    if (available) {
+                        document.getElementById('passkey-card').style.display = '';
+                        loadPasskeys();
+                    }
+                })
+                .catch(() => {});
+        }
+
+        async function loadPasskeys() {
+            const container = document.getElementById('passkeys-list');
+            try {
+                const res = await fetch('/aacsb/api/auth/passkey/list', { credentials: 'include' });
+                const passkeys = await res.json();
+                if (passkeys.length === 0) {
+                    container.innerHTML = '<p class="text-muted">No passkeys registered yet.</p>';
+                    return;
+                }
+                container.innerHTML = passkeys.map(pk => `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid var(--border-color);">
+                        <div>
+                            <strong>${pk.name}</strong>
+                            <div class="text-sm text-muted">
+                                Added ${new Date(pk.created_at).toLocaleDateString()}
+                                ${pk.last_used_at ? ' · Last used ' + new Date(pk.last_used_at).toLocaleDateString() : ''}
+                            </div>
+                        </div>
+                        <button class="btn btn-sm btn-outline" onclick="deletePasskey(${pk.id}, this)">Delete</button>
+                    </div>
+                `).join('');
+            } catch (e) {
+                container.innerHTML = '<p class="text-muted">Could not load passkeys.</p>';
+            }
+        }
+
+        async function registerPasskey() {
+            const name = prompt('Name this passkey (e.g. "MacBook", "iPhone"):', 'Passkey');
+            if (name === null) return;
+
+            try {
+                const beginRes = await fetch('/aacsb/api/auth/passkey/register/begin', {
+                    method: 'POST',
+                    credentials: 'include',
+                });
+                if (!beginRes.ok) throw new Error('Failed to start registration');
+                const options = await beginRes.json();
+
+                options.challenge = base64urlToBuffer(options.challenge);
+                options.user.id = base64urlToBuffer(options.user.id);
+                if (options.excludeCredentials) {
+                    options.excludeCredentials = options.excludeCredentials.map(c => ({
+                        ...c, id: base64urlToBuffer(c.id)
+                    }));
+                }
+
+                const credential = await navigator.credentials.create({ publicKey: options });
+
+                const completeRes = await fetch('/aacsb/api/auth/passkey/register/complete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ credential: credentialToJSON(credential), name: name || 'Passkey' }),
+                });
+
+                if (completeRes.ok) {
+                    loadPasskeys();
+                } else {
+                    const data = await completeRes.json();
+                    alert('Registration failed: ' + (data.detail || 'Unknown error'));
+                }
+            } catch (err) {
+                if (err.name !== 'NotAllowedError') {
+                    alert('Passkey registration failed: ' + err.message);
+                }
+            }
+        }
+
+        async function deletePasskey(id, btn) {
+            if (!confirm('Delete this passkey?')) return;
+            btn.disabled = true;
+            try {
+                const res = await fetch(`/aacsb/api/auth/passkey/${id}`, {
+                    method: 'DELETE',
+                    credentials: 'include',
+                });
+                if (res.ok) {
+                    loadPasskeys();
+                } else {
+                    const data = await res.json();
+                    alert('Failed to delete: ' + (data.detail || 'Unknown error'));
+                    btn.disabled = false;
+                }
+            } catch (e) {
+                alert('Failed to delete passkey.');
+                btn.disabled = false;
+            }
+        }
 
         init();
     </script>

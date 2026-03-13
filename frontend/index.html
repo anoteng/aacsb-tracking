@@ -34,6 +34,13 @@
                 </button>
             </div>
 
+            <!-- Passkey Login -->
+            <div id="passkey-section" class="hidden" style="margin-top: 1rem;">
+                <button type="button" class="btn btn-outline btn-lg" style="width: 100%;" onclick="loginWithPasskey()">
+                    Sign in with passkey
+                </button>
+            </div>
+
             <div class="login-divider">
                 <span>or</span>
             </div>
@@ -151,6 +158,87 @@
                 showAlert('Network error. Please try again.');
             }
         });
+
+        // Show passkey button if browser supports WebAuthn
+        if (window.PublicKeyCredential) {
+            document.getElementById('passkey-section').classList.remove('hidden');
+        }
+
+        async function loginWithPasskey() {
+            try {
+                // Get authentication options from server
+                const beginRes = await fetch(`${API_BASE}/auth/passkey/auth/begin`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                });
+                if (!beginRes.ok) throw new Error('Failed to start passkey authentication');
+                const options = await beginRes.json();
+
+                // Convert base64url strings to ArrayBuffers for the browser API
+                options.challenge = base64urlToBuffer(options.challenge);
+                if (options.allowCredentials) {
+                    options.allowCredentials = options.allowCredentials.map(c => ({
+                        ...c, id: base64urlToBuffer(c.id)
+                    }));
+                }
+
+                // Prompt user for passkey
+                const credential = await navigator.credentials.get({ publicKey: options });
+
+                // Send assertion to server
+                const completeRes = await fetch(`${API_BASE}/auth/passkey/auth/complete`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ credential: credentialToJSON(credential) }),
+                });
+
+                if (completeRes.ok) {
+                    window.location.href = '/aacsb/aol';
+                } else {
+                    const data = await completeRes.json();
+                    showAlert(data.detail || 'Passkey authentication failed');
+                }
+            } catch (err) {
+                if (err.name === 'NotAllowedError') {
+                    // User cancelled — don't show an error
+                } else {
+                    showAlert('Passkey authentication failed. Please try another login method.');
+                }
+            }
+        }
+
+        function base64urlToBuffer(base64url) {
+            const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+            const binary = atob(base64);
+            const buffer = new ArrayBuffer(binary.length);
+            const view = new Uint8Array(buffer);
+            for (let i = 0; i < binary.length; i++) view[i] = binary.charCodeAt(i);
+            return buffer;
+        }
+
+        function bufferToBase64url(buffer) {
+            const bytes = new Uint8Array(buffer);
+            let binary = '';
+            for (const b of bytes) binary += String.fromCharCode(b);
+            return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+        }
+
+        function credentialToJSON(credential) {
+            return {
+                id: credential.id,
+                rawId: bufferToBase64url(credential.rawId),
+                type: credential.type,
+                response: {
+                    clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
+                    authenticatorData: bufferToBase64url(credential.response.authenticatorData),
+                    signature: bufferToBase64url(credential.response.signature),
+                    userHandle: credential.response.userHandle
+                        ? bufferToBase64url(credential.response.userHandle)
+                        : null,
+                },
+            };
+        }
 
         // Check if already logged in
         fetch(`${API_BASE}/auth/me`, { credentials: 'include' })

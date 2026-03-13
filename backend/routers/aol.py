@@ -12,6 +12,7 @@ from models import (
     StudyProgramme,
     Course,
     ProgrammeCourse,
+    CourseCoordinator,
     LearningGoal,
     GoalCategory,
     GoalCourseMatrix,
@@ -1343,6 +1344,52 @@ async def update_course_semester(
     return {"message": "Semester updated"}
 
 
+# ============================================================
+# Course administration
+# ============================================================
+
+@router.get("/courses")
+async def list_courses(
+    q: str | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """List all courses with optional search filter."""
+    query = db.query(Course)
+    if q:
+        query = query.filter(
+            (Course.course_code.ilike(f"%{q}%"))
+            | (Course.name_no.ilike(f"%{q}%"))
+            | (Course.name_eng.ilike(f"%{q}%"))
+        )
+    courses = query.order_by(Course.course_code, Course.course_version).all()
+
+    result = []
+    for c in courses:
+        # Current coordinator (no end_date or end_date in future)
+        from datetime import date
+        today = date.today()
+        current_coord = next(
+            (cc for cc in c.coordinators
+             if (cc.start_date is None or cc.start_date <= today)
+             and (cc.end_date is None or cc.end_date >= today)),
+            None,
+        )
+        result.append({
+            "id": c.id,
+            "course_code": c.course_code,
+            "course_version": c.course_version,
+            "name_no": c.name_no,
+            "name_eng": c.name_eng,
+            "ects": float(c.ects),
+            "coordinator": {
+                "id": current_coord.user.uuid,
+                "name": current_coord.user.full_name,
+            } if current_coord else None,
+        })
+    return result
+
+
 @router.get("/courses/search")
 async def search_courses(
     q: str,
@@ -1372,3 +1419,164 @@ async def search_courses(
         )
         for c in courses
     ]
+
+
+@router.get("/courses/{course_id}")
+async def get_course(
+    course_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Get full course detail: coordinators, programmes, goal mappings."""
+    course = db.query(Course).filter(Course.id == course_id).first()
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    from datetime import date
+    today = date.today()
+
+    # Coordinator history
+    coordinators = []
+    for cc in sorted(course.coordinators, key=lambda x: x.start_date or date.min, reverse=True):
+        coordinators.append({
+            "id": cc.id,
+            "user_id": cc.user.uuid,
+            "name": cc.user.full_name,
+            "email": cc.user.email,
+            "start_date": cc.start_date.isoformat() if cc.start_date else None,
+            "end_date": cc.end_date.isoformat() if cc.end_date else None,
+            "is_current": (
+                (cc.start_date is None or cc.start_date <= today)
+                and (cc.end_date is None or cc.end_date >= today)
+            ),
+        })
+
+    # Programmes this course belongs to
+    programmes = []
+    for pc in course.programmes:
+        programmes.append({
+            "programme_id": pc.programme.id,
+            "programme_code": pc.programme.programme_code,
+            "name_no": pc.programme.name_no,
+            "semester": pc.semester,
+        })
+
+    # Learning goal mappings
+    goals = []
+    for gm in course.goal_mappings:
+        if gm.learning_level and gm.learning_level > 0:
+            goals.append({
+                "goal_id": gm.goal.id,
+                "goal_no": gm.goal.goal_no,
+                "goal_eng": gm.goal.goal_eng,
+                "programme_code": gm.goal.programme.programme_code,
+                "learning_level": gm.learning_level,
+                "is_assessed": gm.is_assessed,
+            })
+
+    return {
+        "id": course.id,
+        "course_code": course.course_code,
+        "course_version": course.course_version,
+        "name_no": course.name_no,
+        "name_eng": course.name_eng,
+        "ects": float(course.ects),
+        "coordinators": coordinators,
+        "programmes": programmes,
+        "goals": goals,
+    }
+
+
+class CoordinatorCreate(BaseModel):
+    user_id: int
+    start_date: str | None = None
+    end_date: str | None = None
+
+
+class CoordinatorUpdate(BaseModel):
+    start_date: str | None = None
+    end_date: str | None = None
+
+
+@router.post("/courses/{course_id}/coordinators")
+async def add_coordinator(
+    course_id: int,
+    body: CoordinatorCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role("system_admin", "admin_staff")),
+):
+    """Assign a coordinator to a course (admin only)."""
+    from datetime import date
+
+    course = db.query(Course).filter(Course.id == course_id).first()
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    auth_service = AuthService(db)
+    target = auth_service.get_user_by_id(body.user_id)
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    cc = CourseCoordinator(
+        course_id=course_id,
+        user_id=body.user_id,
+        assigned_by=user.uuid,
+        start_date=date.fromisoformat(body.start_date) if body.start_date else None,
+        end_date=date.fromisoformat(body.end_date) if body.end_date else None,
+    )
+    db.add(cc)
+    db.commit()
+    db.refresh(cc)
+
+    return {
+        "id": cc.id,
+        "user_id": cc.user_id,
+        "name": cc.user.full_name,
+        "start_date": cc.start_date.isoformat() if cc.start_date else None,
+        "end_date": cc.end_date.isoformat() if cc.end_date else None,
+    }
+
+
+@router.put("/courses/{course_id}/coordinators/{coordinator_id}")
+async def update_coordinator(
+    course_id: int,
+    coordinator_id: int,
+    body: CoordinatorUpdate,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role("system_admin", "admin_staff")),
+):
+    """Update coordinator start/end dates (admin only)."""
+    from datetime import date
+
+    cc = db.query(CourseCoordinator).filter(
+        CourseCoordinator.id == coordinator_id,
+        CourseCoordinator.course_id == course_id,
+    ).first()
+    if not cc:
+        raise HTTPException(status_code=404, detail="Coordinator entry not found")
+
+    cc.start_date = date.fromisoformat(body.start_date) if body.start_date else None
+    cc.end_date = date.fromisoformat(body.end_date) if body.end_date else None
+    db.commit()
+
+    return {"message": "Updated"}
+
+
+@router.delete("/courses/{course_id}/coordinators/{coordinator_id}")
+async def remove_coordinator(
+    course_id: int,
+    coordinator_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role("system_admin", "admin_staff")),
+):
+    """Remove a coordinator entry (admin only)."""
+    cc = db.query(CourseCoordinator).filter(
+        CourseCoordinator.id == coordinator_id,
+        CourseCoordinator.course_id == course_id,
+    ).first()
+    if not cc:
+        raise HTTPException(status_code=404, detail="Coordinator entry not found")
+
+    db.delete(cc)
+    db.commit()
+    return {"message": "Removed"}

@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Courses - AACSB Accreditation</title>
+    <link rel="stylesheet" href="/aacsb/static/css/style.css">
+    <style>
+        .courses-layout {
+            display: grid;
+            grid-template-columns: 340px 1fr;
+            gap: 1.5rem;
+            align-items: start;
+        }
+        .course-list-panel {
+            position: sticky;
+            top: 1rem;
+        }
+        .course-list { list-style: none; padding: 0; margin: 0; max-height: calc(100vh - 220px); overflow-y: auto; }
+        .course-list li {
+            padding: 0.65rem 1rem;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            gap: 0.1rem;
+        }
+        .course-list li:hover { background: var(--bg-secondary); }
+        .course-list li.active { background: var(--primary-light, #e8f0fe); border-left: 3px solid var(--primary); }
+        .course-code { font-weight: 600; font-size: 0.9rem; }
+        .course-name-small { font-size: 0.8rem; color: var(--text-muted); }
+        .coordinator-tag { font-size: 0.75rem; color: var(--text-muted); }
+
+        .detail-section { margin-bottom: 1.5rem; }
+        .detail-section h3 { margin: 0 0 0.75rem; font-size: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; }
+
+        .coord-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .coord-row:last-child { border-bottom: none; }
+        .coord-actions { display: flex; gap: 0.5rem; }
+        .badge-current { background: #d4edda; color: #155724; font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 3px; }
+        .badge-past { background: #f8f9fa; color: #6c757d; font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 3px; }
+
+        .goal-row {
+            padding: 0.4rem 0;
+            border-bottom: 1px solid var(--border-color);
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: 0.75rem;
+            align-items: start;
+            font-size: 0.875rem;
+        }
+        .goal-row:last-child { border-bottom: none; }
+        .level-badge {
+            font-size: 0.7rem;
+            padding: 0.1rem 0.4rem;
+            border-radius: 3px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .level-1 { background: #cfe2ff; color: #084298; }
+        .level-2 { background: #fff3cd; color: #664d03; }
+        .level-3 { background: #d1e7dd; color: #0a3622; }
+        .assessed-dot { color: var(--primary); font-size: 0.7rem; }
+
+        .search-box { margin-bottom: 0.75rem; }
+        .empty-detail { color: var(--text-muted); text-align: center; padding: 3rem; }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <div class="container">
+            <a href="/aacsb/aol" class="nav-brand">AACSB Accreditation</a>
+            <ul class="nav-links">
+                <li><a href="/aacsb/aol">AOL</a></li>
+                <li><a href="/aacsb/aol/courses" class="active">Courses</a></li>
+                <li><a href="/aacsb/research">Research</a></li>
+            </ul>
+            <div class="nav-user" id="nav-user"><span>Loading...</span></div>
+        </div>
+    </nav>
+
+    <header class="page-header">
+        <div class="container">
+            <h1 class="page-title">Courses</h1>
+            <p class="page-subtitle">Course catalogue with coordinators, programmes, and learning goals</p>
+        </div>
+    </header>
+
+    <main class="container" style="padding-bottom: 3rem;">
+        <div class="courses-layout">
+            <!-- Left: course list -->
+            <div class="course-list-panel card" style="padding: 1rem;">
+                <div class="search-box">
+                    <input type="text" id="course-search" class="form-input" placeholder="Search by code or name…">
+                </div>
+                <ul class="course-list" id="course-list">
+                    <li><div class="loading"><div class="spinner"></div></div></li>
+                </ul>
+            </div>
+
+            <!-- Right: course detail -->
+            <div id="course-detail">
+                <div class="empty-detail">Select a course to see details</div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Add coordinator modal -->
+    <div id="add-coord-modal" class="modal-overlay" style="display:none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="add-coord-title">Set Course Coordinator</h2>
+                <button class="modal-close" onclick="closeCoordModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Staff member</label>
+                    <input type="text" id="coord-user-search" class="form-input" placeholder="Search by name or email…">
+                    <div id="coord-user-results" style="margin-top:0.5rem;"></div>
+                    <input type="hidden" id="coord-user-id">
+                    <div id="coord-user-selected" class="text-sm text-muted" style="margin-top:0.25rem;"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Start date <span class="text-muted">(optional)</span></label>
+                    <input type="date" id="coord-start-date" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">End date <span class="text-muted">(optional)</span></label>
+                    <input type="date" id="coord-end-date" class="form-input">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeCoordModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveCoordinator()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit coordinator dates modal -->
+    <div id="edit-coord-modal" class="modal-overlay" style="display:none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Edit Coordinator Dates</h2>
+                <button class="modal-close" onclick="closeEditCoordModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="edit-coord-id">
+                <div class="form-group">
+                    <label class="form-label">Start date</label>
+                    <input type="date" id="edit-coord-start" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">End date</label>
+                    <input type="date" id="edit-coord-end" class="form-input">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeEditCoordModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveEditCoord()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/aacsb/static/aol/js/api.js"></script>
+    <script>
+        const API = '/aacsb/api';
+        let currentUser = null;
+        let isAdmin = false;
+        let allCourses = [];
+        let selectedCourseId = null;
+        let coordSearchTimeout = null;
+
+        const LEVEL_LABELS = { 1: 'Introduced', 2: 'Developing', 3: 'Mastery' };
+
+        async function init() {
+            try {
+                currentUser = await api.getCurrentUser();
+                isAdmin = currentUser.roles.some(r => ['system_admin','admin_staff'].includes(r));
+                renderNav();
+                await loadCourses();
+            } catch (e) {
+                window.location.href = '/aacsb/login';
+            }
+        }
+
+        function renderNav() {
+            document.getElementById('nav-user').innerHTML = `
+                <span>${currentUser.firstname} ${currentUser.lastname}</span>
+                <a href="/aacsb/aol/settings" class="btn btn-sm btn-outline" style="color:white;border-color:rgba(255,255,255,0.3);">Settings</a>
+                <button onclick="api.logout().then(()=>window.location.href='/aacsb/login')" class="btn btn-sm btn-outline" style="color:white;border-color:rgba(255,255,255,0.3);">Logout</button>
+            `;
+            if (currentUser.roles.includes('system_admin')) {
+                const navLinks = document.querySelector('.nav-links');
+                if (!navLinks.querySelector('a[href="/aacsb/admin"]')) {
+                    const li = document.createElement('li');
+                    li.innerHTML = '<a href="/aacsb/admin">Admin</a>';
+                    navLinks.appendChild(li);
+                }
+            }
+        }
+
+        async function loadCourses() {
+            const res = await fetch(`${API}/aol/courses`, { credentials: 'include' });
+            allCourses = await res.json();
+            renderCourseList(allCourses);
+        }
+
+        function renderCourseList(courses) {
+            const ul = document.getElementById('course-list');
+            if (courses.length === 0) {
+                ul.innerHTML = '<li style="color:var(--text-muted);padding:1rem;">No courses found</li>';
+                return;
+            }
+            ul.innerHTML = courses.map(c => `
+                <li onclick="selectCourse(${c.id})" id="course-item-${c.id}" class="${c.id === selectedCourseId ? 'active' : ''}">
+                    <span class="course-code">${c.course_code}-${c.course_version}</span>
+                    <span class="course-name-small">${c.name_no || c.name_eng || ''}</span>
+                    ${c.coordinator ? `<span class="coordinator-tag">${c.coordinator.name}</span>` : ''}
+                </li>
+            `).join('');
+        }
+
+        async function selectCourse(id) {
+            selectedCourseId = id;
+            document.querySelectorAll('.course-list li').forEach(li => li.classList.remove('active'));
+            const item = document.getElementById(`course-item-${id}`);
+            if (item) item.classList.add('active');
+
+            document.getElementById('course-detail').innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+            const res = await fetch(`${API}/aol/courses/${id}`, { credentials: 'include' });
+            const course = await res.json();
+            renderDetail(course);
+        }
+
+        function renderDetail(course) {
+            const coordinatorSection = renderCoordinators(course);
+            const programmesSection = renderProgrammes(course.programmes);
+            const goalsSection = renderGoals(course.goals);
+
+            document.getElementById('course-detail').innerHTML = `
+                <div class="card" style="padding:1.5rem;">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.5rem;">
+                        <div>
+                            <h2 style="margin:0;">${course.course_code}-${course.course_version} &nbsp;<span class="text-muted" style="font-weight:normal;font-size:1rem;">${course.ects} ECTS</span></h2>
+                            ${course.name_no ? `<div style="font-size:1.1rem;margin-top:0.25rem;">${course.name_no}</div>` : ''}
+                            ${course.name_eng && course.name_eng !== course.name_no ? `<div class="text-muted">${course.name_eng}</div>` : ''}
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <h3>
+                            Course Coordinator
+                            ${isAdmin ? `<button class="btn btn-sm btn-primary" style="float:right;" onclick="openAddCoord(${course.id})">+ Add</button>` : ''}
+                        </h3>
+                        ${coordinatorSection}
+                    </div>
+
+                    <div class="detail-section">
+                        <h3>Study Programmes</h3>
+                        ${programmesSection}
+                    </div>
+
+                    <div class="detail-section">
+                        <h3>Learning Goals</h3>
+                        ${goalsSection}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderCoordinators(course) {
+            if (course.coordinators.length === 0) {
+                return '<p class="text-muted">No coordinator assigned.</p>';
+            }
+            return course.coordinators.map(cc => `
+                <div class="coord-row">
+                    <div>
+                        <strong>${cc.name}</strong>
+                        <span class="${cc.is_current ? 'badge-current' : 'badge-past'}">${cc.is_current ? 'Current' : 'Past'}</span>
+                        <div class="text-sm text-muted">
+                            ${cc.email}
+                            ${cc.start_date || cc.end_date
+                                ? ' · ' + (cc.start_date ? formatDate(cc.start_date) : '?') + ' – ' + (cc.end_date ? formatDate(cc.end_date) : 'present')
+                                : ''}
+                        </div>
+                    </div>
+                    ${isAdmin ? `
+                        <div class="coord-actions">
+                            <button class="btn btn-sm btn-outline" onclick="openEditCoord(${cc.id}, '${cc.start_date || ''}', '${cc.end_date || ''}')">Edit dates</button>
+                            <button class="btn btn-sm btn-outline" style="color:var(--danger);" onclick="removeCoord(${course.id}, ${cc.id})">Remove</button>
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+
+        function renderProgrammes(programmes) {
+            if (programmes.length === 0) return '<p class="text-muted">Not linked to any programme.</p>';
+            return `<table style="width:100%;font-size:0.875rem;">
+                <thead><tr>
+                    <th style="text-align:left;padding:0.35rem 0;">Code</th>
+                    <th style="text-align:left;padding:0.35rem 0;">Programme</th>
+                    <th style="text-align:left;padding:0.35rem 0;">Semester</th>
+                </tr></thead>
+                <tbody>
+                ${programmes.map(p => `
+                    <tr>
+                        <td style="padding:0.35rem 0;"><a href="/aacsb/aol/programme/${p.programme_id}">${p.programme_code}</a></td>
+                        <td style="padding:0.35rem 0;">${p.name_no}</td>
+                        <td style="padding:0.35rem 0;">${p.semester ? p.semester + '. sem.' : '–'}</td>
+                    </tr>
+                `).join('')}
+                </tbody>
+            </table>`;
+        }
+
+        function renderGoals(goals) {
+            if (goals.length === 0) return '<p class="text-muted">Not mapped to any learning goals.</p>';
+            return goals.map(g => `
+                <div class="goal-row">
+                    <span class="level-badge level-${g.learning_level}">${LEVEL_LABELS[g.learning_level] || ''}</span>
+                    <div>
+                        <div class="text-sm text-muted">${g.programme_code}</div>
+                        <div>${g.goal_no || g.goal_eng || ''}</div>
+                    </div>
+                    ${g.is_assessed ? '<span class="assessed-dot" title="Assessed">● Assessed</span>' : '<span></span>'}
+                </div>
+            `).join('');
+        }
+
+        function formatDate(iso) {
+            if (!iso) return '';
+            return new Date(iso).toLocaleDateString('no-NO', { year: 'numeric', month: 'short', day: 'numeric' });
+        }
+
+        // --- Search ---
+        document.getElementById('course-search').addEventListener('input', e => {
+            const q = e.target.value.toLowerCase();
+            const filtered = q.length < 2
+                ? allCourses
+                : allCourses.filter(c =>
+                    c.course_code.toLowerCase().includes(q)
+                    || (c.name_no || '').toLowerCase().includes(q)
+                    || (c.name_eng || '').toLowerCase().includes(q)
+                );
+            renderCourseList(filtered);
+        });
+
+        // --- Coordinator modals ---
+        let addCoordCourseId = null;
+
+        function openAddCoord(courseId) {
+            addCoordCourseId = courseId;
+            document.getElementById('coord-user-id').value = '';
+            document.getElementById('coord-user-selected').textContent = '';
+            document.getElementById('coord-user-search').value = '';
+            document.getElementById('coord-user-results').innerHTML = '';
+            document.getElementById('coord-start-date').value = '';
+            document.getElementById('coord-end-date').value = '';
+            const modal = document.getElementById('add-coord-modal');
+            modal.style.display = 'flex';
+            requestAnimationFrame(() => modal.classList.add('active'));
+        }
+
+        function closeCoordModal() {
+            const modal = document.getElementById('add-coord-modal');
+            modal.classList.remove('active');
+            modal.style.display = 'none';
+        }
+
+        document.getElementById('coord-user-search').addEventListener('input', e => {
+            clearTimeout(coordSearchTimeout);
+            const q = e.target.value.trim();
+            if (q.length < 2) { document.getElementById('coord-user-results').innerHTML = ''; return; }
+            coordSearchTimeout = setTimeout(() => searchUsers(q), 300);
+        });
+
+        let allUsers = null;
+
+        async function searchUsers(q) {
+            if (!allUsers) {
+                const res = await fetch(`${API}/admin/users`, { credentials: 'include' });
+                allUsers = await res.json();
+            }
+            const lower = q.toLowerCase();
+            const matches = allUsers.filter(u =>
+                (u.firstname + ' ' + u.lastname).toLowerCase().includes(lower)
+                || (u.email || '').toLowerCase().includes(lower)
+            );
+            const container = document.getElementById('coord-user-results');
+            container.innerHTML = matches.slice(0, 8).map(u => `
+                <div style="padding:0.4rem 0.75rem;cursor:pointer;border:1px solid var(--border-color);border-radius:4px;margin-bottom:0.25rem;"
+                     onclick="selectCoordUser(${u.id || u.uuid}, '${(u.firstname + ' ' + u.lastname).replace(/'/g, "\\'")}')">
+                    ${u.firstname} ${u.lastname} <span class="text-muted text-sm">${u.email}</span>
+                </div>
+            `).join('');
+        }
+
+        function selectCoordUser(id, name) {
+            document.getElementById('coord-user-id').value = id;
+            document.getElementById('coord-user-selected').textContent = '✓ ' + name;
+            document.getElementById('coord-user-results').innerHTML = '';
+            document.getElementById('coord-user-search').value = '';
+        }
+
+        async function saveCoordinator() {
+            const userId = document.getElementById('coord-user-id').value;
+            if (!userId) { alert('Please select a staff member.'); return; }
+            const start = document.getElementById('coord-start-date').value;
+            const end = document.getElementById('coord-end-date').value;
+
+            const res = await fetch(`${API}/aol/courses/${addCoordCourseId}/coordinators`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ user_id: parseInt(userId), start_date: start || null, end_date: end || null }),
+            });
+
+            if (res.ok) {
+                closeCoordModal();
+                selectCourse(addCoordCourseId);
+                loadCourses();
+            } else {
+                const d = await res.json();
+                alert('Error: ' + (d.detail || 'Could not save'));
+            }
+        }
+
+        let editCoordId = null;
+
+        function openEditCoord(coordId, startDate, endDate) {
+            editCoordId = coordId;
+            document.getElementById('edit-coord-id').value = coordId;
+            document.getElementById('edit-coord-start').value = startDate;
+            document.getElementById('edit-coord-end').value = endDate;
+            const modal = document.getElementById('edit-coord-modal');
+            modal.style.display = 'flex';
+            requestAnimationFrame(() => modal.classList.add('active'));
+        }
+
+        function closeEditCoordModal() {
+            const modal = document.getElementById('edit-coord-modal');
+            modal.classList.remove('active');
+            modal.style.display = 'none';
+        }
+
+        async function saveEditCoord() {
+            const start = document.getElementById('edit-coord-start').value;
+            const end = document.getElementById('edit-coord-end').value;
+
+            const res = await fetch(`${API}/aol/courses/${selectedCourseId}/coordinators/${editCoordId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ start_date: start || null, end_date: end || null }),
+            });
+
+            if (res.ok) {
+                closeEditCoordModal();
+                selectCourse(selectedCourseId);
+            } else {
+                const d = await res.json();
+                alert('Error: ' + (d.detail || 'Could not update'));
+            }
+        }
+
+        async function removeCoord(courseId, coordId) {
+            if (!confirm('Remove this coordinator entry?')) return;
+            const res = await fetch(`${API}/aol/courses/${courseId}/coordinators/${coordId}`, {
+                method: 'DELETE',
+                credentials: 'include',
+            });
+            if (res.ok) {
+                selectCourse(courseId);
+                loadCourses();
+            } else {
+                alert('Could not remove coordinator.');
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

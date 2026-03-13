@@ -12,6 +12,7 @@
             <a href="/aacsb/aol" class="nav-brand">AACSB Accreditation</a>
             <ul class="nav-links">
                 <li><a href="/aacsb/aol" class="active">AOL</a></li>
+                <li><a href="/aacsb/aol/courses">Courses</a></li>
                 <li><a href="/aacsb/research">Research</a></li>
             </ul>
             <div class="nav-user" id="nav-user">
@@ -546,7 +547,7 @@
                         const results = await api.searchCourses(query);
                         resultsContainer.innerHTML = results.map(course => `
                             <div class="card" style="padding: 0.75rem; cursor: pointer;" onclick="addCourseToProgramme(${course.id}, this)">
-                                <strong>${course.course_code}</strong> - ${course.name_eng || course.name_no || 'No name'}
+                                <strong>${course.course_code}-${course.course_version}</strong> - ${course.name_eng || course.name_no || 'No name'}
                                 <span class="text-muted text-sm">(${course.ects} ECTS)</span>
                             </div>
                         `).join('');

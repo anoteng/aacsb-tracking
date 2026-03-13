@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text, Enum, DECIMAL
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text, Enum, DECIMAL, LargeBinary
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
@@ -47,6 +47,7 @@ class User(Base):
     intellectual_contributions = relationship("UserIntellectualContribution", back_populates="user", cascade="all, delete-orphan")
     professional_activities = relationship("ProfessionalActivity", back_populates="user", cascade="all, delete-orphan")
     exemptions = relationship("UserExemption", back_populates="user", foreign_keys="UserExemption.user_id", cascade="all, delete-orphan")
+    passkeys = relationship("PasskeyCredential", back_populates="user", cascade="all, delete-orphan")
 
     @property
     def full_name(self):
@@ -110,6 +111,31 @@ class Session(Base):
     # Relationships
     user = relationship("User", back_populates="sessions", foreign_keys=[user_id])
     impersonating_user = relationship("User", foreign_keys=[impersonating_user_id])
+
+
+class PasskeyCredential(Base):
+    __tablename__ = "passkey_credentials"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.uuid"), nullable=False)
+    credential_id = Column(LargeBinary(1024), nullable=False, unique=True)
+    public_key = Column(LargeBinary, nullable=False)
+    sign_count = Column(Integer, nullable=False, default=0)
+    aaguid = Column(String(36))
+    name = Column(String(64), default="Passkey")
+    created_at = Column(DateTime, server_default=func.now())
+    last_used_at = Column(DateTime)
+
+    user = relationship("User", back_populates="passkeys")
+
+
+class WebAuthnChallenge(Base):
+    __tablename__ = "webauthn_challenges"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    challenge = Column(String(128), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.uuid"), nullable=True)
+    expires_at = Column(DateTime, nullable=False)
 
 
 class AuthToken(Base):
