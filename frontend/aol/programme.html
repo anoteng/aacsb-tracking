@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Programme - AOL - AACSB Accreditation</title>
     <link rel="stylesheet" href="/aacsb/static/css/style.css">
+    <script src="/aacsb/static/js/i18n.js"></script>
 </head>
 <body>
     <nav class="nav">
@@ -12,19 +13,23 @@
             <a href="/aacsb/aol" class="nav-brand">AACSB Accreditation</a>
             <ul class="nav-links">
                 <li><a href="/aacsb/aol" class="active">AOL</a></li>
-                <li><a href="/aacsb/aol/courses">Courses</a></li>
-                <li><a href="/aacsb/research">Research</a></li>
+                <li><a href="/aacsb/aol/courses" data-i18n="Courses">Courses</a></li>
+                <li><a href="/aacsb/research" data-i18n="Research">Research</a></li>
             </ul>
             <div class="nav-user" id="nav-user">
                 <span>Loading...</span>
             </div>
+            <select id="lang-switcher" onchange="i18n.setLang(this.value)" style="margin-left:0.5rem; padding:0.25rem 0.5rem; border:1px solid rgba(255,255,255,0.3); border-radius:4px; font-size:0.875rem; background:transparent; color:white;">
+                <option value="en">EN</option>
+                <option value="no">NO</option>
+            </select>
         </div>
     </nav>
 
     <header class="page-header">
         <div class="container">
             <div>
-                <a href="/aacsb/aol" class="text-sm text-muted">&larr; Back to programmes</a>
+                <a href="/aacsb/aol" class="text-sm text-muted">&larr; <span data-i18n="Back to programmes">Back to programmes</span></a>
                 <h1 class="page-title" id="programme-name">Loading...</h1>
                 <p class="page-subtitle" id="programme-code"></p>
             </div>
@@ -35,16 +40,16 @@
     <main class="container">
         <!-- Tabs -->
         <div class="tabs">
-            <button class="tab active" data-tab="goals">Learning Goals</button>
-            <button class="tab" data-tab="matrix">Curriculum Matrix</button>
-            <button class="tab" data-tab="courses">Courses</button>
+            <button class="tab active" data-tab="goals" data-i18n="Learning Goals">Learning Goals</button>
+            <button class="tab" data-tab="matrix" data-i18n="Curriculum Matrix">Curriculum Matrix</button>
+            <button class="tab" data-tab="courses" data-i18n="Courses">Courses</button>
         </div>
 
         <!-- Goals Tab -->
         <div id="tab-goals" class="tab-content">
             <div class="flex-between mb-2">
-                <h2>Learning Goals</h2>
-                <button class="btn btn-primary hidden" id="add-goal-btn" onclick="showAddGoalModal()">
+                <h2 data-i18n="Learning Goals">Learning Goals</h2>
+                <button class="btn btn-primary hidden" id="add-goal-btn" onclick="showAddGoalModal()" data-i18n="+ Add Goal">
                     + Add Goal
                 </button>
             </div>
@@ -63,8 +68,8 @@
         <!-- Courses Tab -->
         <div id="tab-courses" class="tab-content hidden">
             <div class="flex-between mb-2">
-                <h2>Courses in Programme</h2>
-                <button class="btn btn-primary hidden" id="add-course-btn" onclick="showAddCourseModal()">
+                <h2 data-i18n="Courses in Programme">Courses in Programme</h2>
+                <button class="btn btn-primary hidden" id="add-course-btn" onclick="showAddCourseModal()" data-i18n="+ Add Course">
                     + Add Course
                 </button>
             </div>
@@ -77,8 +82,8 @@
         <div id="goal-detail" class="hidden">
             <div class="flex-between mb-2">
                 <div>
-                    <a href="#" onclick="hideGoalDetail(); return false;" class="text-sm text-muted">&larr; Back to goals</a>
-                    <h2 id="goal-detail-title">Goal Details</h2>
+                    <a href="#" onclick="hideGoalDetail(); return false;" class="text-sm text-muted">&larr; <span data-i18n="Back to goals">Back to goals</span></a>
+                    <h2 id="goal-detail-title"></h2>
                 </div>
             </div>
             <div id="rubrics-container"></div>
@@ -89,6 +94,8 @@
     <script src="/aacsb/static/aol/js/matrix.js"></script>
     <script src="/aacsb/static/aol/js/rubric.js"></script>
     <script>
+        const { t } = i18n;
+
         // Get programme ID from URL
         const programmeId = parseInt(window.location.pathname.split('/').pop());
 
@@ -101,6 +108,8 @@
 
         async function init() {
             try {
+                await i18n.init();
+
                 // Load user
                 user = await api.getCurrentUser();
                 renderNav();
@@ -136,10 +145,10 @@
             navUser.innerHTML = `
                 <span>${user.firstname} ${user.lastname}</span>
                 <a href="/aacsb/aol/settings" class="btn btn-sm btn-outline" style="color: white; border-color: rgba(255,255,255,0.3);">
-                    Settings
+                    ${t('Settings')}
                 </a>
                 <button onclick="logout()" class="btn btn-sm btn-outline" style="color: white; border-color: rgba(255,255,255,0.3);">
-                    Logout
+                    ${t('Logout')}
                 </button>
             `;
 
@@ -175,22 +184,17 @@
         function setupTabs() {
             document.querySelectorAll('.tab').forEach(tab => {
                 tab.addEventListener('click', () => {
-                    // Update active tab
                     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
                     tab.classList.add('active');
 
-                    // Show content
                     const tabName = tab.dataset.tab;
                     document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
                     document.getElementById(`tab-${tabName}`).classList.remove('hidden');
 
-                    // Hide goal detail
                     document.getElementById('goal-detail').classList.add('hidden');
 
-                    // Load tab content
                     if (tabName === 'matrix' && !matrixComponent) {
                         matrixComponent = new MatrixComponent('matrix-container', programmeId);
-                        // Pass app reference for permission checks
                         window.app = { isAdmin, canEditGoal };
                         matrixComponent.load();
                     } else if (tabName === 'courses' && courses.length === 0) {
@@ -218,8 +222,8 @@
             if (goals.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
-                        <h3>No learning goals defined</h3>
-                        <p>Add learning goals to define what students should achieve in this programme.</p>
+                        <h3>${t('No learning goals defined')}</h3>
+                        <p>${t('Add learning goals to define what students should achieve in this programme.')}</p>
                     </div>
                 `;
                 return;
@@ -246,10 +250,10 @@
                             <table>
                                 <thead>
                                     <tr>
-                                        <th style="width: 50%;">Goal</th>
-                                        <th>Measured</th>
-                                        <th>Target</th>
-                                        <th>Assigned Staff</th>
+                                        <th style="width: 50%;">${t('Goal')}</th>
+                                        <th>${t('Measured')}</th>
+                                        <th>${t('Target')}</th>
+                                        <th>${t('Assigned Staff')}</th>
                                         <th></th>
                                     </tr>
                                 </thead>
@@ -257,22 +261,22 @@
                                     ${g.goals.map(goal => `
                                         <tr>
                                             <td>${goal.goal_eng || goal.goal_no}</td>
-                                            <td>${goal.is_measured ? '<span class="text-success">Yes</span>' : '<span class="text-muted">No</span>'}</td>
+                                            <td>${goal.is_measured ? `<span class="text-success">${t('Yes')}</span>` : `<span class="text-muted">${t('No')}</span>`}</td>
                                             <td>${goal.target_percentage}%</td>
                                             <td>${goal.assigned_staff.map(s => s.name).join(', ') || '-'}</td>
                                             <td class="text-right">
                                                 ${canEditGoal(goal) ? `
                                                     <button class="btn btn-sm btn-outline" onclick="showGoalDetail(${goal.id})">
-                                                        View Rubrics
+                                                        ${t('View Rubrics')}
                                                     </button>
                                                 ` : `
                                                     <button class="btn btn-sm btn-outline" onclick="showGoalDetail(${goal.id})">
-                                                        View
+                                                        ${t('View')}
                                                     </button>
                                                 `}
                                                 ${isAdmin() ? `
                                                     <button class="btn btn-sm btn-outline" onclick="showEditGoalModal(${goal.id})">
-                                                        Edit
+                                                        ${t('Edit')}
                                                     </button>
                                                 ` : ''}
                                             </td>
@@ -293,10 +297,8 @@
             document.getElementById('goal-detail').classList.remove('hidden');
             document.getElementById('goal-detail-title').textContent = goal.goal_eng || goal.goal_no;
 
-            // Initialize rubric component
             rubricComponent = new RubricComponent('rubrics-container', goalId);
             rubricComponent.setGoal(goal);
-            // Pass app reference
             window.app = { isAdmin, canEditGoal, user };
             rubricComponent.load();
         }
@@ -324,8 +326,8 @@
             if (courses.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
-                        <h3>No courses assigned</h3>
-                        <p>Add courses to this programme to build the curriculum matrix.</p>
+                        <h3>${t('No courses assigned')}</h3>
+                        <p>${t('Add courses to this programme to build the curriculum matrix.')}</p>
                     </div>
                 `;
                 return;
@@ -336,8 +338,8 @@
                     <table>
                         <thead>
                             <tr>
-                                <th>Code</th>
-                                <th>Name</th>
+                                <th>${t('Code')}</th>
+                                <th>${t('Name')}</th>
                                 <th>ECTS</th>
                             </tr>
                         </thead>
@@ -361,38 +363,38 @@
             modal.innerHTML = `
                 <div class="modal">
                     <div class="modal-header">
-                        <h2>Add Learning Goal</h2>
+                        <h2>${t('Add Learning Goal')}</h2>
                         <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
                     </div>
                     <div class="modal-body">
                         <div class="form-group">
-                            <label class="form-label">Category</label>
+                            <label class="form-label">${t('Category')}</label>
                             <select id="goal-category" class="form-select" required>
                                 ${categories.map(c => `<option value="${c.id}">${c.name_eng || c.name_no}</option>`).join('')}
                             </select>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Goal (English)</label>
+                            <label class="form-label">${t('Goal (English)')}</label>
                             <textarea id="goal-eng" class="form-textarea" required></textarea>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Goal (Norwegian)</label>
+                            <label class="form-label">${t('Goal (Norwegian)')}</label>
                             <textarea id="goal-no" class="form-textarea"></textarea>
                         </div>
                         <div class="form-group">
                             <label class="form-label">
                                 <input type="checkbox" id="goal-measured">
-                                This goal is measured
+                                ${t('This goal is measured')}
                             </label>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Target % (meets or exceeds expectations)</label>
+                            <label class="form-label">${t('Target % (meets or exceeds expectations)')}</label>
                             <input type="number" id="goal-target" class="form-input" value="80" min="0" max="100">
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
-                        <button class="btn btn-primary" id="save-goal-btn">Add Goal</button>
+                        <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">${t('Cancel')}</button>
+                        <button class="btn btn-primary" id="save-goal-btn">${t('Add Goal')}</button>
                     </div>
                 </div>
             `;
@@ -410,7 +412,7 @@
                 };
 
                 if (!data.goal_eng) {
-                    alert('Goal description is required');
+                    alert(t('Goal description is required'));
                     return;
                 }
 
@@ -419,7 +421,7 @@
                     modal.remove();
                     loadGoals();
                 } catch (error) {
-                    alert('Failed to create goal: ' + error.message);
+                    alert(t('Failed to create goal: ') + error.message);
                 }
             });
         }
@@ -433,39 +435,39 @@
             modal.innerHTML = `
                 <div class="modal">
                     <div class="modal-header">
-                        <h2>Edit Learning Goal</h2>
+                        <h2>${t('Edit Learning Goal')}</h2>
                         <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
                     </div>
                     <div class="modal-body">
                         <div class="form-group">
-                            <label class="form-label">Category</label>
+                            <label class="form-label">${t('Category')}</label>
                             <select id="goal-category" class="form-select" required>
                                 ${categories.map(c => `<option value="${c.id}" ${c.id === goal.category.id ? 'selected' : ''}>${c.name_eng || c.name_no}</option>`).join('')}
                             </select>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Goal (English)</label>
+                            <label class="form-label">${t('Goal (English)')}</label>
                             <textarea id="goal-eng" class="form-textarea" required>${goal.goal_eng || ''}</textarea>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Goal (Norwegian)</label>
+                            <label class="form-label">${t('Goal (Norwegian)')}</label>
                             <textarea id="goal-no" class="form-textarea">${goal.goal_no || ''}</textarea>
                         </div>
                         <div class="form-group">
                             <label class="form-label">
                                 <input type="checkbox" id="goal-measured" ${goal.is_measured ? 'checked' : ''}>
-                                This goal is measured
+                                ${t('This goal is measured')}
                             </label>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Target % (meets or exceeds expectations)</label>
+                            <label class="form-label">${t('Target % (meets or exceeds expectations)')}</label>
                             <input type="number" id="goal-target" class="form-input" value="${goal.target_percentage}" min="0" max="100">
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button class="btn btn-danger" onclick="deleteGoal(${goalId}); this.closest('.modal-overlay').remove();">Delete</button>
-                        <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
-                        <button class="btn btn-primary" id="save-goal-btn">Save</button>
+                        <button class="btn btn-danger" onclick="deleteGoal(${goalId}); this.closest('.modal-overlay').remove();">${t('Delete')}</button>
+                        <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">${t('Cancel')}</button>
+                        <button class="btn btn-primary" id="save-goal-btn">${t('Save')}</button>
                     </div>
                 </div>
             `;
@@ -487,13 +489,13 @@
                     modal.remove();
                     loadGoals();
                 } catch (error) {
-                    alert('Failed to update goal: ' + error.message);
+                    alert(t('Failed to update goal: ') + error.message);
                 }
             });
         }
 
         async function deleteGoal(goalId) {
-            if (!confirm('Are you sure you want to delete this goal? This will also delete all associated rubrics and assessments.')) {
+            if (!confirm(t('Are you sure you want to delete this goal? This will also delete all associated rubrics and assessments.'))) {
                 return;
             }
 
@@ -501,7 +503,7 @@
                 await api.deleteGoal(goalId);
                 loadGoals();
             } catch (error) {
-                alert('Failed to delete goal: ' + error.message);
+                alert(t('Failed to delete goal: ') + error.message);
             }
         }
 
@@ -511,18 +513,18 @@
             modal.innerHTML = `
                 <div class="modal">
                     <div class="modal-header">
-                        <h2>Add Course to Programme</h2>
+                        <h2>${t('Add Course to Programme')}</h2>
                         <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
                     </div>
                     <div class="modal-body">
                         <div class="form-group">
-                            <label class="form-label">Search Course</label>
-                            <input type="text" id="course-search" class="form-input" placeholder="Type course code or name...">
+                            <label class="form-label">${t('Search Course')}</label>
+                            <input type="text" id="course-search" class="form-input" placeholder="${t('Type course code or name...')}">
                         </div>
                         <div id="course-results" class="mt-1"></div>
                     </div>
                     <div class="modal-footer">
-                        <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Close</button>
+                        <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">${t('Close')}</button>
                     </div>
                 </div>
             `;
@@ -547,7 +549,7 @@
                         const results = await api.searchCourses(query);
                         resultsContainer.innerHTML = results.map(course => `
                             <div class="card" style="padding: 0.75rem; cursor: pointer;" onclick="addCourseToProgramme(${course.id}, this)">
-                                <strong>${course.course_code}-${course.course_version}</strong> - ${course.name_eng || course.name_no || 'No name'}
+                                <strong>${course.course_code}-${course.course_version}</strong> - ${course.name_eng || course.name_no || t('No name')}
                                 <span class="text-muted text-sm">(${course.ects} ECTS)</span>
                             </div>
                         `).join('');
@@ -561,15 +563,14 @@
         async function addCourseToProgramme(courseId, element) {
             try {
                 await api.addCourseToProgramme(programmeId, courseId);
-                element.innerHTML += ' <span class="text-success">Added!</span>';
+                element.innerHTML += ` <span class="text-success">${t('Added!')}</span>`;
                 element.style.pointerEvents = 'none';
-                // Reload courses list
                 courses = [];
                 if (!document.getElementById('tab-courses').classList.contains('hidden')) {
                     loadCourses();
                 }
             } catch (error) {
-                alert('Failed to add course: ' + error.message);
+                alert(t('Failed to add course: ') + error.message);
             }
         }
 

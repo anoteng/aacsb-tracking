@@ -11,6 +11,8 @@ class AolApp {
 
     async init() {
         try {
+            await i18n.init();
+
             // Get current user
             this.user = await api.getCurrentUser();
             this.renderNav();
@@ -27,10 +29,10 @@ class AolApp {
             navUser.innerHTML = `
                 <span>${this.user.firstname} ${this.user.lastname}</span>
                 <a href="/aacsb/aol/settings" class="btn btn-sm btn-outline" style="color: white; border-color: rgba(255,255,255,0.3);">
-                    Settings
+                    ${i18n.t('Settings')}
                 </a>
                 <button onclick="app.logout()" class="btn btn-sm btn-outline" style="color: white; border-color: rgba(255,255,255,0.3);">
-                    Logout
+                    ${i18n.t('Logout')}
                 </button>
             `;
         }
@@ -76,8 +78,8 @@ class AolApp {
         if (this.programmes.length === 0) {
             container.innerHTML = `
                 <div class="empty-state">
-                    <h3>No programmes found</h3>
-                    <p>Contact an administrator to set up study programmes.</p>
+                    <h3>${i18n.t('No programmes found')}</h3>
+                    <p>${i18n.t('Contact an administrator to set up study programmes.')}</p>
                 </div>
             `;
             return;
@@ -88,8 +90,8 @@ class AolApp {
                 <h3>${prog.name_eng || prog.name_no}</h3>
                 <div class="code">${prog.programme_code}</div>
                 <div class="stats">
-                    <span>${prog.goal_count} goals</span>
-                    <span>${prog.course_count} courses</span>
+                    <span>${i18n.t('{{n}} goals', { n: prog.goal_count })}</span>
+                    <span>${i18n.t('{{n}} courses', { n: prog.course_count })}</span>
                 </div>
             </a>
         `).join('');

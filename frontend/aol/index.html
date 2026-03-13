@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AOL - AACSB Accreditation</title>
     <link rel="stylesheet" href="/aacsb/static/css/style.css">
+    <script src="/aacsb/static/js/i18n.js"></script>
 </head>
 <body>
     <nav class="nav">
@@ -12,20 +13,24 @@
             <a href="/aacsb/aol" class="nav-brand">AACSB Accreditation</a>
             <ul class="nav-links">
                 <li><a href="/aacsb/aol" class="active">AOL</a></li>
-                <li><a href="/aacsb/aol/courses">Courses</a></li>
-                <li><a href="/aacsb/research">Research</a></li>
+                <li><a href="/aacsb/aol/courses" data-i18n="Courses">Courses</a></li>
+                <li><a href="/aacsb/research" data-i18n="Research">Research</a></li>
             </ul>
             <div class="nav-user" id="nav-user">
                 <span>Loading...</span>
             </div>
+            <select id="lang-switcher" onchange="i18n.setLang(this.value)" style="margin-left:0.5rem; padding:0.25rem 0.5rem; border:1px solid rgba(255,255,255,0.3); border-radius:4px; font-size:0.875rem; background:transparent; color:white;">
+                <option value="en">EN</option>
+                <option value="no">NO</option>
+            </select>
         </div>
     </nav>
 
     <header class="page-header">
         <div class="container">
             <div>
-                <h1 class="page-title">Assurance of Learning</h1>
-                <p class="page-subtitle">Overview of study programmes and learning goals</p>
+                <h1 class="page-title" data-i18n="Assurance of Learning">Assurance of Learning</h1>
+                <p class="page-subtitle" data-i18n="Overview of study programmes and learning goals">Overview of study programmes and learning goals</p>
             </div>
         </div>
     </header>
