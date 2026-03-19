@@ -115,7 +115,8 @@ INSERT IGNORE INTO learning_methods (code, name_eng, name_no, sort_order) VALUES
 ('Fe', 'Feedback', 'Tilbakemelding', 7),
 ('PR', 'Peer Review', 'Fagfellevurdering', 8),
 ('Po', 'Projects', 'Prosjekter', 9),
-('Ex', 'Excursions', 'Ekskursjoner', 10);
+('Ex', 'Excursions', 'Ekskursjoner', 10),
+('Si', 'Simulation', 'Simulering', 11);
 
 -- =============================================
 -- SEED DATA - Assessment Methods

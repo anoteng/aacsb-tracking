@@ -64,8 +64,8 @@ class MatrixComponent {
         if (!this.data || this.data.goals.length === 0) {
             this.container.innerHTML = `
                 <div class="empty-state">
-                    <h3>No goals defined</h3>
-                    <p>Add learning goals to see the curriculum matrix.</p>
+                    <h3>${i18n.t('No goals defined')}</h3>
+                    <p>${i18n.t('Add learning goals to see the curriculum matrix.')}</p>
                 </div>
             `;
             return;
@@ -74,8 +74,8 @@ class MatrixComponent {
         if (this.data.courses.length === 0) {
             this.container.innerHTML = `
                 <div class="empty-state">
-                    <h3>No courses assigned</h3>
-                    <p>Add courses to this programme to build the matrix.</p>
+                    <h3>${i18n.t('No courses assigned')}</h3>
+                    <p>${i18n.t('Add courses to this programme to build the matrix.')}</p>
                 </div>
             `;
             return;
@@ -93,13 +93,13 @@ class MatrixComponent {
                     <thead>
                         ${categoryHeaders}
                         <tr>
-                            <th class="course-cell">Course</th>
-                            <th class="meta-cell">Learning</th>
-                            <th class="meta-cell">Assessment</th>
-                            <th class="meta-cell">Tech</th>
-                            <th class="meta-cell">SDGs</th>
+                            <th class="course-cell">${i18n.t('Course')}</th>
+                            <th class="meta-cell">${i18n.t('Learning')}</th>
+                            <th class="meta-cell">${i18n.t('Assessment')}</th>
+                            <th class="meta-cell">${i18n.t('Tech')}</th>
+                            <th class="meta-cell">${i18n.t('SDGs')}</th>
                             ${this.data.goals.map((goal, idx) => `
-                                <th class="goal-header" title="${goal.goal_eng || goal.goal_no}">
+                                <th class="goal-header" title="${i18n.getLang() === 'no' ? (goal.goal_no || goal.goal_eng) : (goal.goal_eng || goal.goal_no)}">
                                     LO${idx + 1}
                                 </th>
                             `).join('')}
@@ -112,12 +112,12 @@ class MatrixComponent {
             </div>
             <div class="mt-2">
                 <div class="flex gap-2 text-sm">
-                    <strong>Learning Level:</strong>
-                    <span class="level-badge level-none">- None</span>
-                    <span class="level-badge level-intro">I Introduced</span>
-                    <span class="level-badge level-dev">D Developing</span>
-                    <span class="level-badge level-mastery">M Mastery</span>
-                    <span style="margin-left: 1rem;"><strong>A</strong> = Assessed</span>
+                    <strong>${i18n.t('Learning Level:')}</strong>
+                    <span class="level-badge level-none">- ${i18n.t('None')}</span>
+                    <span class="level-badge level-intro">I ${i18n.t('Introduced')}</span>
+                    <span class="level-badge level-dev">D ${i18n.t('Developing')}</span>
+                    <span class="level-badge level-mastery">M ${i18n.t('Mastery')}</span>
+                    <span style="margin-left: 1rem;"><strong>A</strong> = ${i18n.t('Assessed')}</span>
                 </div>
             </div>
         `;
@@ -364,33 +364,33 @@ class MatrixComponent {
         modal.innerHTML = `
             <div class="modal">
                 <div class="modal-header">
-                    <h2>Edit Learning Outcome</h2>
+                    <h2>${i18n.t('Edit Learning Outcome')}</h2>
                     <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
                 </div>
                 <div class="modal-body">
                     <p class="mb-2">
-                        <strong>Goal:</strong> ${i18n.getLang() === 'no' ? (goal.goal_no || goal.goal_eng) : (goal.goal_eng || goal.goal_no)}<br>
-                        <strong>Course:</strong> ${course.course_code} - ${i18n.getLang() === 'no' ? (course.name_no || course.name_eng) : (course.name_eng || course.name_no)}
+                        <strong>${i18n.t('Goal:')}</strong> ${i18n.getLang() === 'no' ? (goal.goal_no || goal.goal_eng) : (goal.goal_eng || goal.goal_no)}<br>
+                        <strong>${i18n.t('Course:')}</strong> ${course.course_code} - ${i18n.getLang() === 'no' ? (course.name_no || course.name_eng) : (course.name_eng || course.name_no)}
                     </p>
                     <div class="form-group">
-                        <label class="form-label">Learning Level</label>
+                        <label class="form-label">${i18n.t('Learning Level')}</label>
                         <select id="matrix-level" class="form-select">
-                            <option value="0" ${entry.learning_level === 0 ? 'selected' : ''}>0 - None</option>
-                            <option value="1" ${entry.learning_level === 1 ? 'selected' : ''}>1 - Introduced (concept first presented)</option>
-                            <option value="2" ${entry.learning_level === 2 ? 'selected' : ''}>2 - Developing (students practice skills)</option>
-                            <option value="3" ${entry.learning_level === 3 ? 'selected' : ''}>3 - Mastery (thorough learning, assessed)</option>
+                            <option value="0" ${entry.learning_level === 0 ? 'selected' : ''}>0 - ${i18n.t('None')}</option>
+                            <option value="1" ${entry.learning_level === 1 ? 'selected' : ''}>1 - ${i18n.t('Introduced (concept first presented)')}</option>
+                            <option value="2" ${entry.learning_level === 2 ? 'selected' : ''}>2 - ${i18n.t('Developing (students practice skills)')}</option>
+                            <option value="3" ${entry.learning_level === 3 ? 'selected' : ''}>3 - ${i18n.t('Mastery (thorough learning, assessed)')}</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label class="form-label">
                             <input type="checkbox" id="matrix-assessed" ${entry.is_assessed ? 'checked' : ''}>
-                            This learning outcome is assessed in this course
+                            ${i18n.t('This learning outcome is assessed in this course')}
                         </label>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
-                    <button class="btn btn-primary" id="save-matrix-btn">Save</button>
+                    <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">${i18n.t('Cancel')}</button>
+                    <button class="btn btn-primary" id="save-matrix-btn">${i18n.t('Save')}</button>
                 </div>
             </div>
         `;
@@ -422,16 +422,16 @@ class MatrixComponent {
         modal.innerHTML = `
             <div class="modal" style="max-width: 700px;">
                 <div class="modal-header">
-                    <h2>Edit Course Metadata</h2>
+                    <h2>${i18n.t('Edit Course Metadata')}</h2>
                     <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
                 </div>
                 <div class="modal-body">
                     <p class="mb-2">
-                        <strong>Course:</strong> ${course.course_code} - ${i18n.getLang() === 'no' ? (course.name_no || course.name_eng) : (course.name_eng || course.name_no)}
+                        <strong>${i18n.t('Course:')}</strong> ${course.course_code} - ${i18n.getLang() === 'no' ? (course.name_no || course.name_eng) : (course.name_eng || course.name_no)}
                     </p>
 
                     <div class="form-group">
-                        <label class="form-label">Semester</label>
+                        <label class="form-label">${i18n.t('Semester')}</label>
                         <select id="course-semester" class="form-select" style="width: auto;">
                             ${[1,2,3,4,5,6,7,8,9,10].map(s => `
                                 <option value="${s}" ${course.semester === s ? 'selected' : ''}>${this.getSemesterLabel(s)}</option>
@@ -440,43 +440,43 @@ class MatrixComponent {
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Learning Methods</label>
+                        <label class="form-label">${i18n.t('Learning Methods')}</label>
                         <div class="checkbox-grid" id="learning-methods">
                             ${this.methods.learning.map(m => `
                                 <label class="checkbox-item">
                                     <input type="checkbox" value="${m.code}" ${course.learning_methods?.includes(m.code) ? 'checked' : ''}>
-                                    ${m.code} - ${m.name_eng}
+                                    ${m.code} - ${i18n.getLang() === 'no' ? (m.name_no || m.name_eng) : m.name_eng}
                                 </label>
                             `).join('')}
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Assessment Methods</label>
+                        <label class="form-label">${i18n.t('Assessment Methods')}</label>
                         <div class="checkbox-grid" id="assessment-methods">
                             ${this.methods.assessment.map(m => `
                                 <label class="checkbox-item">
                                     <input type="checkbox" value="${m.code}" ${course.assessment_methods?.includes(m.code) ? 'checked' : ''}>
-                                    ${m.code} - ${m.name_eng}
+                                    ${m.code} - ${i18n.getLang() === 'no' ? (m.name_no || m.name_eng) : m.name_eng}
                                 </label>
                             `).join('')}
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Technologies</label>
+                        <label class="form-label">${i18n.t('Technologies')}</label>
                         <div class="checkbox-grid" id="technologies">
                             ${this.methods.technologies.map(t => `
                                 <label class="checkbox-item">
                                     <input type="checkbox" value="${t.code}" ${course.technologies?.includes(t.code) ? 'checked' : ''}>
-                                    ${t.code} - ${t.name_eng}
+                                    ${t.code} - ${i18n.getLang() === 'no' ? (t.name_no || t.name_eng) : t.name_eng}
                                 </label>
                             `).join('')}
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">SDGs (Sustainable Development Goals)</label>
+                        <label class="form-label">${i18n.t('SDGs (Sustainable Development Goals)')}</label>
                         <div class="checkbox-grid" id="sdgs">
                             ${Array.from({length: 17}, (_, i) => i + 1).map(n => `
                                 <label class="checkbox-item">
@@ -488,8 +488,8 @@ class MatrixComponent {
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
-                    <button class="btn btn-primary" id="save-meta-btn">Save</button>
+                    <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">${i18n.t('Cancel')}</button>
+                    <button class="btn btn-primary" id="save-meta-btn">${i18n.t('Save')}</button>
                 </div>
             </div>
         `;
