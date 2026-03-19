@@ -87,7 +87,7 @@ class AolApp {
 
         container.innerHTML = this.programmes.map(prog => `
             <a href="/aacsb/aol/programme/${prog.id}" class="programme-card">
-                <h3>${prog.name_eng || prog.name_no}</h3>
+                <h3>${i18n.getLang() === 'no' ? (prog.name_no || prog.name_eng) : (prog.name_eng || prog.name_no)}</h3>
                 <div class="code">${prog.programme_code}</div>
                 <div class="stats">
                     <span>${i18n.t('{{n}} goals', { n: prog.goal_count })}</span>

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Research - AACSB Accreditation</title>
     <link rel="stylesheet" href="/aacsb/static/css/style.css">
+    <script src="/aacsb/static/js/i18n.js"></script>
     <style>
         .research-container {
             max-width: 1400px;
@@ -218,87 +219,91 @@
             <a href="/aacsb/aol" class="nav-brand">AACSB Accreditation</a>
             <ul class="nav-links">
                 <li><a href="/aacsb/aol">AOL</a></li>
-                <li><a href="/aacsb/research" class="active">Research</a></li>
-                <li><a href="/aacsb/qualifications">Qualifications</a></li>
+                <li><a href="/aacsb/research" class="active" data-i18n="Research">Research</a></li>
+                <li><a href="/aacsb/qualifications" data-i18n="Qualifications">Qualifications</a></li>
                 <li><a href="/aacsb/admin">Admin</a></li>
             </ul>
             <div class="nav-user" id="nav-user">
                 <span>Loading...</span>
             </div>
+            <select id="lang-switcher" onchange="i18n.setLang(this.value)" style="margin-left:0.5rem; padding:0.25rem 0.5rem; border:1px solid rgba(255,255,255,0.3); border-radius:4px; font-size:0.875rem; background:#1e40af; color:white;">
+                <option value="en">EN</option>
+                <option value="no">NO</option>
+            </select>
         </div>
     </nav>
 
     <header class="page-header">
         <div class="container">
-            <h1 class="page-title">Research Publications</h1>
-            <p class="page-subtitle">Scientific output inventory from NVA</p>
+            <h1 class="page-title" data-i18n="Research Publications">Research Publications</h1>
+            <p class="page-subtitle" data-i18n="Scientific output inventory from NVA">Scientific output inventory from NVA</p>
         </div>
     </header>
 
     <main class="research-container">
         <div class="filters">
             <label>
-                Year from:
+                <span data-i18n="Year from:">Year from:</span>
                 <select id="year-from"></select>
             </label>
             <label>
-                Year to:
+                <span data-i18n="Year to:">Year to:</span>
                 <select id="year-to"></select>
             </label>
-            <button class="btn btn-primary" onclick="loadPublications()">Load Publications</button>
+            <button class="btn btn-primary" onclick="loadPublications()" data-i18n="Load Publications">Load Publications</button>
         </div>
 
         <div id="loading" class="loading" style="display: none;">
             <div class="spinner"></div>
-            <p>Fetching publications from NVA...</p>
+            <p data-i18n="Fetching publications from NVA...">Fetching publications from NVA...</p>
         </div>
 
         <div id="content" style="display: none;">
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="value" id="stat-total">0</div>
-                    <div class="label">Total Publications</div>
+                    <div class="label" data-i18n="Total Publications">Total Publications</div>
                 </div>
                 <div class="stat-card">
                     <div class="value" id="stat-researchers">0</div>
-                    <div class="label">Researchers</div>
+                    <div class="label" data-i18n="Researchers">Researchers</div>
                 </div>
                 <div class="stat-card">
                     <div class="value" id="stat-journals">0</div>
-                    <div class="label">Journal Articles</div>
+                    <div class="label" data-i18n="Journal Articles">Journal Articles</div>
                 </div>
                 <div class="stat-card">
                     <div class="value" id="stat-avg">0</div>
-                    <div class="label">Avg per Researcher</div>
+                    <div class="label" data-i18n="Avg per Researcher">Avg per Researcher</div>
                 </div>
             </div>
 
             <div class="section-tabs">
-                <button class="section-tab active" data-section="overview">Overview</button>
-                <button class="section-tab" data-section="publications">Publications</button>
-                <button class="section-tab" data-section="researchers">Researchers</button>
+                <button class="section-tab active" data-section="overview" data-i18n="Overview">Overview</button>
+                <button class="section-tab" data-section="publications" data-i18n="Publications">Publications</button>
+                <button class="section-tab" data-section="researchers" data-i18n="Researchers">Researchers</button>
             </div>
 
             <div id="section-overview" class="section-content active">
                 <div class="chart-container">
-                    <div class="chart-title">Publications by Year</div>
+                    <div class="chart-title" data-i18n="Publications by Year">Publications by Year</div>
                     <div class="bar-chart" id="year-chart"></div>
                 </div>
 
                 <div class="chart-container">
-                    <div class="chart-title">Publications by Type</div>
+                    <div class="chart-title" data-i18n="Publications by Type">Publications by Type</div>
                     <div id="type-breakdown"></div>
                 </div>
             </div>
 
             <div id="section-publications" class="section-content">
                 <div class="filters">
-                    <input type="text" id="search-pub" placeholder="Search publications..." style="flex: 1; max-width: 400px;">
+                    <input type="text" id="search-pub" placeholder="Search publications..." data-i18n-placeholder="Search publications..." style="flex: 1; max-width: 400px;">
                     <select id="filter-type">
-                        <option value="">All types</option>
+                        <option value="" data-i18n="All types">All types</option>
                     </select>
                     <select id="filter-year">
-                        <option value="">All years</option>
+                        <option value="" data-i18n="All years">All years</option>
                     </select>
                 </div>
                 <div id="publications-table"></div>
@@ -310,13 +315,16 @@
         </div>
 
         <div id="no-researchers" class="empty-state" style="display: none;">
-            <h3>No researchers configured</h3>
-            <p>Add researcher IDs to staff members in the Admin section to track publications.</p>
-            <a href="/aacsb/admin" class="btn btn-primary">Go to Admin</a>
+            <h3 data-i18n="No researchers configured">No researchers configured</h3>
+            <p data-i18n="Add researcher IDs to staff members in the Admin section to track publications.">Add researcher IDs to staff members in the Admin section to track publications.</p>
+            <a href="/aacsb/admin" class="btn btn-primary" data-i18n="Go to Admin">Go to Admin</a>
         </div>
     </main>
 
     <script>
+        i18n.init();
+        const { t } = i18n;
+
         const API_BASE = '/aacsb/api';
         let currentUser = null;
         let publicationsData = null;
@@ -326,8 +334,6 @@
             await checkAuth();
             initYearSelects();
             setupTabs();
-
-            // Auto-load if there are researchers
             loadPublications();
         });
 
@@ -340,14 +346,12 @@
                 }
                 currentUser = await response.json();
 
-                let navHtml = `
+                document.getElementById('nav-user').innerHTML = `
                     <span>${currentUser.firstname} ${currentUser.lastname}</span>
-                    <a href="/aacsb/aol/settings" class="btn btn-sm btn-outline" style="color: white; border-color: rgba(255,255,255,0.3);">Settings</a>
-                    <button onclick="logout()" class="btn btn-sm btn-outline" style="color: white; border-color: rgba(255,255,255,0.3);">Logout</button>
+                    <a href="/aacsb/aol/settings" class="btn btn-sm btn-outline" style="color: white; border-color: rgba(255,255,255,0.3);">${t('Settings')}</a>
+                    <button onclick="logout()" class="btn btn-sm btn-outline" style="color: white; border-color: rgba(255,255,255,0.3);">${t('Logout')}</button>
                 `;
-                document.getElementById('nav-user').innerHTML = navHtml;
 
-                // Add Admin link for system admins
                 if (currentUser.roles && currentUser.roles.includes('system_admin')) {
                     const navLinks = document.querySelector('.nav-links');
                     if (navLinks && !navLinks.querySelector('a[href="/aacsb/admin"]')) {
@@ -368,12 +372,11 @@
 
         function initYearSelects() {
             const currentYear = new Date().getFullYear() - 1;
-            const defaultYearFrom = currentYear - 1;  // 2019
+            const defaultYearFrom = currentYear - 1;
             const yearFrom = document.getElementById('year-from');
             const yearTo = document.getElementById('year-to');
 
             for (let y = currentYear; y >= currentYear - 10; y--) {
-                // Option(text, value, defaultSelected, selected) - 4th param sets selection
                 yearFrom.add(new Option(y, y, false, y === defaultYearFrom));
                 yearTo.add(new Option(y, y, false, y === currentYear));
             }
@@ -404,7 +407,7 @@
                     { credentials: 'include' }
                 );
 
-                if (!response.ok) throw new Error('Failed to load publications');
+                if (!response.ok) throw new Error(t('Failed to load publications: ') + response.status);
 
                 publicationsData = await response.json();
 
@@ -426,7 +429,7 @@
 
             } catch (error) {
                 document.getElementById('loading').style.display = 'none';
-                alert('Failed to load publications: ' + error.message);
+                alert(t('Failed to load publications: ') + error.message);
             }
         }
 
@@ -434,7 +437,6 @@
             document.getElementById('stat-total').textContent = publicationsData.total_publications;
             document.getElementById('stat-researchers').textContent = publicationsData.total_researchers;
 
-            // Count peer-reviewed journal articles (excludes chronicles, editorials, etc.)
             const journalCount = publicationsData.publications_by_type['Journal Article'] || 0;
             document.getElementById('stat-journals').textContent = journalCount;
 
@@ -467,7 +469,6 @@
         function renderTypeBreakdown() {
             const container = document.getElementById('type-breakdown');
             const data = publicationsData.publications_by_type;
-
             const total = Object.values(data).reduce((a, b) => a + b, 0);
 
             container.innerHTML = Object.entries(data)
@@ -489,7 +490,6 @@
         function renderPublicationsTable(filter = {}) {
             let pubs = [...publicationsData.publications];
 
-            // Apply filters
             if (filter.search) {
                 const term = filter.search.toLowerCase();
                 pubs = pubs.filter(p =>
@@ -497,14 +497,9 @@
                     p.contributors.some(c => c.name.toLowerCase().includes(term))
                 );
             }
-            if (filter.type) {
-                pubs = pubs.filter(p => p.type === filter.type);
-            }
-            if (filter.year) {
-                pubs = pubs.filter(p => p.year == filter.year);
-            }
+            if (filter.type) pubs = pubs.filter(p => p.type === filter.type);
+            if (filter.year) pubs = pubs.filter(p => p.year == filter.year);
 
-            // Apply sorting
             pubs = sortPublications(pubs, sortState.column, sortState.direction);
 
             const container = document.getElementById('publications-table');
@@ -512,11 +507,11 @@
                 <table class="pub-table">
                     <thead>
                         <tr>
-                            <th class="sortable ${sortState.column === 'year' ? sortState.direction : ''}" data-sort="year" style="width: 60px;">Year</th>
-                            <th class="sortable ${sortState.column === 'title' ? sortState.direction : ''}" data-sort="title">Title</th>
-                            <th class="sortable ${sortState.column === 'type' ? sortState.direction : ''}" data-sort="type" style="width: 140px;">Type</th>
-                            <th class="sortable ${sortState.column === 'authors' ? sortState.direction : ''}" data-sort="authors">Authors</th>
-                            <th class="sortable ${sortState.column === 'journal' ? sortState.direction : ''}" data-sort="journal">Journal/Publisher</th>
+                            <th class="sortable ${sortState.column === 'year' ? sortState.direction : ''}" data-sort="year" style="width: 60px;">${t('Year')}</th>
+                            <th class="sortable ${sortState.column === 'title' ? sortState.direction : ''}" data-sort="title">${t('Title')}</th>
+                            <th class="sortable ${sortState.column === 'type' ? sortState.direction : ''}" data-sort="type" style="width: 140px;">${t('Type')}</th>
+                            <th class="sortable ${sortState.column === 'authors' ? sortState.direction : ''}" data-sort="authors">${t('Authors')}</th>
+                            <th class="sortable ${sortState.column === 'journal' ? sortState.direction : ''}" data-sort="journal">${t('Journal/Publisher')}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -533,10 +528,9 @@
                         `).join('')}
                     </tbody>
                 </table>
-                ${pubs.length > 200 ? `<p class="text-muted mt-1">Showing first 200 of ${pubs.length} publications</p>` : ''}
+                ${pubs.length > 200 ? `<p class="text-muted mt-1">${t('Showing first 200 of {{n}} publications', { n: pubs.length })}</p>` : ''}
             `;
 
-            // Add click handlers for sorting
             container.querySelectorAll('th.sortable').forEach(th => {
                 th.addEventListener('click', () => handleSort(th.dataset.sort));
             });
@@ -548,27 +542,22 @@
                 let valA, valB;
                 switch (column) {
                     case 'year':
-                        valA = a.year || 0;
-                        valB = b.year || 0;
+                        valA = a.year || 0; valB = b.year || 0;
                         return (valA - valB) * mult;
                     case 'title':
-                        valA = (a.title || '').toLowerCase();
-                        valB = (b.title || '').toLowerCase();
+                        valA = (a.title || '').toLowerCase(); valB = (b.title || '').toLowerCase();
                         return valA.localeCompare(valB) * mult;
                     case 'type':
-                        valA = (a.type || '').toLowerCase();
-                        valB = (b.type || '').toLowerCase();
+                        valA = (a.type || '').toLowerCase(); valB = (b.type || '').toLowerCase();
                         return valA.localeCompare(valB) * mult;
                     case 'authors':
-                        valA = a.contributors[0]?.name || '';
-                        valB = b.contributors[0]?.name || '';
+                        valA = a.contributors[0]?.name || ''; valB = b.contributors[0]?.name || '';
                         return valA.localeCompare(valB) * mult;
                     case 'journal':
                         valA = (a.journal || a.publisher || '').toLowerCase();
                         valB = (b.journal || b.publisher || '').toLowerCase();
                         return valA.localeCompare(valB) * mult;
-                    default:
-                        return 0;
+                    default: return 0;
                 }
             });
         }
@@ -591,28 +580,25 @@
                 <div class="researcher-card">
                     <h4>${r.name}</h4>
                     <div class="count">${r.publication_count}</div>
-                    <div class="text-muted">publications</div>
+                    <div class="text-muted">${t('publications')}</div>
                     ${r.error ? `<div class="text-error text-sm">${r.error}</div>` : ''}
                 </div>
             `).join('');
         }
 
         function setupFilters() {
-            // Populate type filter
             const typeSelect = document.getElementById('filter-type');
-            typeSelect.innerHTML = '<option value="">All types</option>';
+            typeSelect.innerHTML = `<option value="">${t('All types')}</option>`;
             Object.keys(publicationsData.publications_by_type).forEach(type => {
                 typeSelect.add(new Option(type, type));
             });
 
-            // Populate year filter
             const yearSelect = document.getElementById('filter-year');
-            yearSelect.innerHTML = '<option value="">All years</option>';
+            yearSelect.innerHTML = `<option value="">${t('All years')}</option>`;
             Object.keys(publicationsData.publications_by_year).sort().reverse().forEach(year => {
                 yearSelect.add(new Option(year, year));
             });
 
-            // Add event listeners
             document.getElementById('search-pub').addEventListener('input', applyFilters);
             document.getElementById('filter-type').addEventListener('change', applyFilters);
             document.getElementById('filter-year').addEventListener('change', applyFilters);

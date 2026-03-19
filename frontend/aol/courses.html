@@ -83,7 +83,7 @@
                 <li><a href="/aacsb/research" data-i18n="Research">Research</a></li>
             </ul>
             <div class="nav-user" id="nav-user"><span>Loading...</span></div>
-            <select id="lang-switcher" onchange="i18n.setLang(this.value)" style="margin-left:0.5rem; padding:0.25rem 0.5rem; border:1px solid rgba(255,255,255,0.3); border-radius:4px; font-size:0.875rem; background:transparent; color:white;">
+            <select id="lang-switcher" onchange="i18n.setLang(this.value)" style="margin-left:0.5rem; padding:0.25rem 0.5rem; border:1px solid rgba(255,255,255,0.3); border-radius:4px; font-size:0.875rem; background:#1e40af; color:white;">
                 <option value="en">EN</option>
                 <option value="no">NO</option>
             </select>
@@ -180,6 +180,7 @@
     <script>
         i18n.init();
         const { t } = i18n;
+        const locName = obj => i18n.getLang() === 'no' ? (obj.name_no || obj.name_eng) : (obj.name_eng || obj.name_no);
 
         const API = '/aacsb/api';
         let currentUser = null;
@@ -325,7 +326,7 @@
                 ${programmes.map(p => `
                     <tr>
                         <td style="padding:0.35rem 0;"><a href="/aacsb/aol/programme/${p.programme_id}">${p.programme_code}</a></td>
-                        <td style="padding:0.35rem 0;">${p.name_no}</td>
+                        <td style="padding:0.35rem 0;">${locName(p)}</td>
                         <td style="padding:0.35rem 0;">${p.semester ? p.semester + '. sem.' : '–'}</td>
                     </tr>
                 `).join('')}

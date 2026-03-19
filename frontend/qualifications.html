@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Faculty Qualifications - AACSB</title>
     <link rel="stylesheet" href="/aacsb/static/css/style.css">
+    <script src="/aacsb/static/js/i18n.js"></script>
     <style>
         .qual-container {
             max-width: 1400px;
@@ -413,11 +414,11 @@
     <!-- Impersonation Banner (hidden by default) -->
     <div id="impersonation-banner" class="impersonation-banner" style="display: none;">
         <div class="banner-text">
-            <strong>Viewing as:</strong>
+            <strong data-i18n="Viewing as:">Viewing as:</strong>
             <span id="impersonating-name"></span>
             <span style="opacity: 0.7;">(<span id="impersonating-email"></span>)</span>
         </div>
-        <button class="btn-stop" onclick="stopImpersonation()">Stop Viewing As</button>
+        <button class="btn-stop" onclick="stopImpersonation()" data-i18n="Stop Viewing As">Stop Viewing As</button>
     </div>
 
     <nav class="nav">
@@ -425,29 +426,33 @@
             <a href="/aacsb/aol" class="nav-brand">AACSB Accreditation</a>
             <ul class="nav-links">
                 <li><a href="/aacsb/aol">AOL</a></li>
-                <li><a href="/aacsb/research">Research</a></li>
-                <li><a href="/aacsb/qualifications" class="active">Qualifications</a></li>
-                <li><a href="/aacsb/admin">Admin</a></li>
+                <li><a href="/aacsb/research" data-i18n="Research">Research</a></li>
+                <li><a href="/aacsb/qualifications" class="active" data-i18n="Qualifications">Qualifications</a></li>
+                <li><a href="/aacsb/admin" data-i18n="Admin">Admin</a></li>
             </ul>
             <div class="nav-user" id="nav-user">
-                <span>Loading...</span>
+                <span data-i18n="Loading...">Loading...</span>
             </div>
+            <select id="lang-switcher" onchange="i18n.setLang(this.value)" style="margin-left:0.5rem; padding:0.25rem 0.5rem; border:1px solid rgba(255,255,255,0.3); border-radius:4px; font-size:0.875rem; background:#1e40af; color:white;">
+                <option value="en">EN</option>
+                <option value="no">NO</option>
+            </select>
         </div>
     </nav>
 
     <header class="page-header">
         <div class="container">
-            <h1 class="page-title">Faculty Qualifications</h1>
-            <p class="page-subtitle">Track intellectual contributions and qualification status</p>
+            <h1 class="page-title" data-i18n="Faculty Qualifications">Faculty Qualifications</h1>
+            <p class="page-subtitle" data-i18n="Track intellectual contributions and qualification status">Track intellectual contributions and qualification status</p>
         </div>
     </header>
 
     <main class="qual-container">
         <div class="tabs">
-            <button class="tab active" data-tab="my-status">My Status</button>
-            <button class="tab" data-tab="contributions">My Contributions</button>
-            <button class="tab" data-tab="activities">Professional Activities</button>
-            <button class="tab" data-tab="overview" id="overview-tab" style="display: none;">Faculty Overview</button>
+            <button class="tab active" data-tab="my-status" data-i18n="My Status">My Status</button>
+            <button class="tab" data-tab="contributions" data-i18n="My Contributions">My Contributions</button>
+            <button class="tab" data-tab="activities" data-i18n="Professional Activities">Professional Activities</button>
+            <button class="tab" data-tab="overview" id="overview-tab" style="display: none;" data-i18n="Faculty Overview">Faculty Overview</button>
         </div>
 
         <!-- My Status Tab -->
@@ -465,27 +470,27 @@
         <!-- Activities Tab -->
         <div class="tab-content" id="activities">
             <div class="status-card">
-                <h3>Add Professional Activity</h3>
+                <h3 data-i18n="Add Professional Activity">Add Professional Activity</h3>
                 <div class="activity-form">
-                    <input type="number" id="activity-year" placeholder="Year" min="2015" max="2030" value="2025" style="width: 80px;">
+                    <input type="number" id="activity-year" data-i18n-placeholder="Year" placeholder="Year" min="2015" max="2030" value="2025" style="width: 80px;">
                     <select id="activity-type" style="min-width: 200px;">
-                        <option value="">Select activity type...</option>
-                        <option value="Faculty internship">Faculty internship</option>
-                        <option value="Business advisory/consulting">Business advisory/consulting</option>
-                        <option value="Professional organization officer">Professional organization officer</option>
-                        <option value="Workshop/conference speaker">Workshop/conference speaker</option>
-                        <option value="Professional publication">Professional publication</option>
-                        <option value="Professional workshop participant">Professional workshop participant</option>
-                        <option value="Professional certification">Professional certification</option>
-                        <option value="Board member">Board member</option>
-                        <option value="Media expert appearance">Media expert appearance</option>
-                        <option value="Policymaking participation">Policymaking participation</option>
-                        <option value="Chronicle/op-ed">Chronicle/op-ed</option>
-                        <option value="Executive education">Executive education</option>
-                        <option value="Other professional engagement">Other professional engagement</option>
+                        <option value="" data-i18n="Select activity type...">Select activity type...</option>
+                        <option value="Faculty internship" data-i18n="Faculty internship">Faculty internship</option>
+                        <option value="Business advisory/consulting" data-i18n="Business advisory/consulting">Business advisory/consulting</option>
+                        <option value="Professional organization officer" data-i18n="Professional organization officer">Professional organization officer</option>
+                        <option value="Workshop/conference speaker" data-i18n="Workshop/conference speaker">Workshop/conference speaker</option>
+                        <option value="Professional publication" data-i18n="Professional publication">Professional publication</option>
+                        <option value="Professional workshop participant" data-i18n="Professional workshop participant">Professional workshop participant</option>
+                        <option value="Professional certification" data-i18n="Professional certification">Professional certification</option>
+                        <option value="Board member" data-i18n="Board member">Board member</option>
+                        <option value="Media expert appearance" data-i18n="Media expert appearance">Media expert appearance</option>
+                        <option value="Policymaking participation" data-i18n="Policymaking participation">Policymaking participation</option>
+                        <option value="Chronicle/op-ed" data-i18n="Chronicle/op-ed">Chronicle/op-ed</option>
+                        <option value="Executive education" data-i18n="Executive education">Executive education</option>
+                        <option value="Other professional engagement" data-i18n="Other professional engagement">Other professional engagement</option>
                     </select>
-                    <input type="text" id="activity-description" placeholder="Description (optional)" style="flex: 1; min-width: 200px;">
-                    <button class="btn btn-primary" onclick="addActivity()">Add</button>
+                    <input type="text" id="activity-description" data-i18n-placeholder="Description (optional)" placeholder="Description (optional)" style="flex: 1; min-width: 200px;">
+                    <button class="btn btn-primary" onclick="addActivity()" data-i18n="Add">Add</button>
                 </div>
             </div>
             <div id="activities-list"></div>
@@ -516,12 +521,15 @@
         let selectedPeriod = { year_from: 2020, year_to: 2025 }; // Default 6-year window
 
         document.addEventListener('DOMContentLoaded', async () => {
+            await i18n.init();
+            const { t } = i18n;
             await checkAuth();
             setupTabs();
             await loadMyStatus();
         });
 
         async function checkAuth() {
+            const { t } = i18n;
             try {
                 const response = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' });
                 if (!response.ok) {
@@ -536,7 +544,8 @@
 
                 document.getElementById('nav-user').innerHTML = `
                     <span>${currentUser.firstname} ${currentUser.lastname}</span>
-                    <button onclick="logout()" class="btn btn-sm btn-outline" style="color: white; border-color: rgba(255,255,255,0.3);">Logout</button>
+                    <a href="/aacsb/settings" class="btn btn-sm btn-outline" style="color: white; border-color: rgba(255,255,255,0.3);">${t('Settings')}</a>
+                    <button onclick="logout()" class="btn btn-sm btn-outline" style="color: white; border-color: rgba(255,255,255,0.3);">${t('Logout')}</button>
                 `;
 
                 if (isAdmin) {
@@ -559,6 +568,7 @@
         }
 
         async function stopImpersonation() {
+            const { t } = i18n;
             try {
                 const response = await fetch(`${API_BASE}/admin/stop-impersonation`, {
                     method: 'POST',
@@ -566,7 +576,7 @@
                 });
                 if (!response.ok) {
                     const data = await response.json();
-                    throw new Error(data.detail || 'Failed to stop impersonation');
+                    throw new Error(data.detail || t('Failed to stop impersonation'));
                 }
                 window.location.reload();
             } catch (error) {
@@ -602,9 +612,10 @@
         }
 
         async function loadMyStatus() {
+            const { t } = i18n;
             try {
                 const response = await fetch(`${API_BASE}/research/my-status`, { credentials: 'include' });
-                if (!response.ok) throw new Error('Failed to load status');
+                if (!response.ok) throw new Error(t('Failed to load status'));
                 myStatus = await response.json();
                 renderStatus();
             } catch (error) {
@@ -613,6 +624,7 @@
         }
 
         function renderStatus() {
+            const { t } = i18n;
             document.getElementById('status-loading').style.display = 'none';
             const content = document.getElementById('status-content');
             content.style.display = 'block';
@@ -622,7 +634,7 @@
             const summary = myStatus.summary;
 
             const statusClass = qual.requirements_met ? 'status-met' : (qual.category ? 'status-not-met' : 'status-pending');
-            const statusText = qual.requirements_met ? 'Requirements Met' : (qual.category ? 'Action Needed' : 'Not Configured');
+            const statusText = qual.requirements_met ? t('Requirements Met') : (qual.category ? t('Action Needed') : t('Not Configured'));
 
             content.innerHTML = `
                 <div class="status-card">
@@ -630,7 +642,7 @@
                         <div>
                             <h2 style="margin: 0;">${user.name}</h2>
                             <p style="margin: 0.5rem 0; color: #64748b;">
-                                ${user.faculty_category ? `<span class="badge badge-category">${user.faculty_category}</span>` : 'No category set'}
+                                ${user.faculty_category ? `<span class="badge badge-category">${user.faculty_category}</span>` : t('No category set')}
                                 ${user.highest_degree ? `<span class="badge">${user.highest_degree}${user.degree_year ? ` (${user.degree_year})` : ''}</span>` : ''}
                                 ${user.disciplines.map(d => `<span class="badge badge-discipline">${d.shorthand} ${d.percentage}%</span>`).join('')}
                             </p>
@@ -643,25 +655,25 @@
                         <div class="progress-grid">
                             <div class="progress-item">
                                 <div class="progress-value">${qual.current.prj_articles}</div>
-                                <div class="progress-label">PRJ Articles</div>
-                                ${qual.requirements.prj_required ? `<div class="progress-target">Target: ${qual.requirements.prj_required}</div>` : ''}
+                                <div class="progress-label">${t('PRJ Articles')}</div>
+                                ${qual.requirements.prj_required ? `<div class="progress-target">${t('Target:')} ${qual.requirements.prj_required}</div>` : ''}
                             </div>
                             <div class="progress-item">
                                 <div class="progress-value">${qual.current.total_ics}</div>
-                                <div class="progress-label">Total ICs</div>
-                                ${qual.requirements.total_ics_required ? `<div class="progress-target">Target: ${qual.requirements.total_ics_required}</div>` : ''}
+                                <div class="progress-label">${t('Total ICs')}</div>
+                                ${qual.requirements.total_ics_required ? `<div class="progress-target">${t('Target:')} ${qual.requirements.total_ics_required}</div>` : ''}
                             </div>
                             <div class="progress-item">
                                 <div class="progress-value">${qual.current.professional_activities}</div>
-                                <div class="progress-label">Prof. Activities</div>
-                                ${qual.requirements.activities_required ? `<div class="progress-target">Target: ${qual.requirements.activities_required}</div>` : ''}
+                                <div class="progress-label">${t('Prof. Activities')}</div>
+                                ${qual.requirements.activities_required ? `<div class="progress-target">${t('Target:')} ${qual.requirements.activities_required}</div>` : ''}
                             </div>
                             <div class="progress-item">
                                 <div class="progress-value">${summary.categorized_contributions}/${summary.total_contributions}</div>
-                                <div class="progress-label">Categorized ICs</div>
+                                <div class="progress-label">${t('Categorized ICs')}</div>
                             </div>
                         </div>
-                    ` : '<p class="text-muted">Please contact admin to set your faculty category.</p>'}
+                    ` : `<p class="text-muted">${t('Please contact admin to set your faculty category.')}</p>`}
 
                     ${qual.warnings && qual.warnings.length > 0 ? `
                         <ul class="warning-list">
@@ -671,18 +683,19 @@
                 </div>
 
                 <p class="text-muted" style="text-align: center;">
-                    Evaluation period: ${myStatus.period.year_from} - ${myStatus.period.year_to}
+                    ${t('Evaluation period:')} ${myStatus.period.year_from} - ${myStatus.period.year_to}
                 </p>
             `;
         }
 
         async function loadMyContributions() {
+            const { t } = i18n;
             document.getElementById('contributions-loading').style.display = 'block';
             document.getElementById('contributions-content').style.display = 'none';
 
             try {
                 const response = await fetch(`${API_BASE}/research/my-contributions`, { credentials: 'include' });
-                if (!response.ok) throw new Error('Failed to load contributions');
+                if (!response.ok) throw new Error(t('Failed to load contributions'));
                 const data = await response.json();
                 myContributions = data.contributions || [];
                 renderContributions();
@@ -692,12 +705,13 @@
         }
 
         function renderContributions() {
+            const { t } = i18n;
             document.getElementById('contributions-loading').style.display = 'none';
             const content = document.getElementById('contributions-content');
             content.style.display = 'block';
 
             if (myContributions.length === 0) {
-                content.innerHTML = '<p class="text-muted">No contributions found. Make sure your researcher ID is configured.</p>';
+                content.innerHTML = `<p class="text-muted">${t('No contributions found. Make sure your researcher ID is configured.')}</p>`;
                 return;
             }
 
@@ -706,18 +720,18 @@
 
             content.innerHTML = `
                 <p style="margin-bottom: 1rem;">
-                    <strong>${myContributions.length}</strong> contributions found.
-                    Categorize each contribution to count toward your qualification requirements.
+                    <strong>${myContributions.length}</strong> ${t('contributions found.')}
+                    ${t('Categorize each contribution to count toward your qualification requirements.')}
                 </p>
                 <table class="ic-table">
                     <thead>
                         <tr>
-                            <th class="sortable ${contributionsSortState.column === 'year' ? contributionsSortState.direction : ''}" data-sort="year" data-table="contributions">Year</th>
-                            <th class="sortable ic-title ${contributionsSortState.column === 'title' ? contributionsSortState.direction : ''}" data-sort="title" data-table="contributions">Title</th>
-                            <th class="sortable ${contributionsSortState.column === 'type' ? contributionsSortState.direction : ''}" data-sort="type" data-table="contributions">Type</th>
-                            <th>Publication Type</th>
-                            <th>Portfolio Category</th>
-                            <th>Impact</th>
+                            <th class="sortable ${contributionsSortState.column === 'year' ? contributionsSortState.direction : ''}" data-sort="year" data-table="contributions">${t('Year')}</th>
+                            <th class="sortable ic-title ${contributionsSortState.column === 'title' ? contributionsSortState.direction : ''}" data-sort="title" data-table="contributions">${t('Title')}</th>
+                            <th class="sortable ${contributionsSortState.column === 'type' ? contributionsSortState.direction : ''}" data-sort="type" data-table="contributions">${t('Type')}</th>
+                            <th>${t('Publication Type')}</th>
+                            <th>${t('Portfolio Category')}</th>
+                            <th>${t('Impact')}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -731,28 +745,28 @@
                                     <td>${c.year || '-'}</td>
                                     <td class="ic-title">
                                         <a href="${c.nva_url}" target="_blank" title="${escapeHtml(c.title)}">${truncate(c.title, 60)}</a>
-                                        ${c.other_categorizations.length > 0 ? '<span class="badge" title="Other co-authors have categorized">Co</span>' : ''}
+                                        ${c.other_categorizations.length > 0 ? `<span class="badge" title="${t('Other co-authors have categorized')}">${t('Co')}</span>` : ''}
                                     </td>
                                     <td>${c.type || '-'}</td>
                                     <td>
                                         <select class="cat-select ${hasPubType ? 'categorized' : ''}" onchange="updateCategorization('${c.nva_id}', 'publication_type', this.value)">
-                                            <option value="">-- Select --</option>
-                                            <option value="prj_article" ${myCat.publication_type === 'prj_article' ? 'selected' : ''}>PRJ Article</option>
-                                            <option value="peer_reviewed_other" ${myCat.publication_type === 'peer_reviewed_other' ? 'selected' : ''}>Peer-reviewed Other</option>
-                                            <option value="other_ic" ${myCat.publication_type === 'other_ic' ? 'selected' : ''}>Other IC</option>
+                                            <option value="">${t('-- Select --')}</option>
+                                            <option value="prj_article" ${myCat.publication_type === 'prj_article' ? 'selected' : ''}>${t('PRJ Article')}</option>
+                                            <option value="peer_reviewed_other" ${myCat.publication_type === 'peer_reviewed_other' ? 'selected' : ''}>${t('Peer-reviewed Other')}</option>
+                                            <option value="other_ic" ${myCat.publication_type === 'other_ic' ? 'selected' : ''}>${t('Other IC')}</option>
                                         </select>
                                     </td>
                                     <td>
                                         <select class="cat-select ${hasPortfolio ? 'categorized' : ''}" onchange="updateCategorization('${c.nva_id}', 'portfolio_category', this.value)">
-                                            <option value="">-- Select --</option>
-                                            <option value="basic_discovery" ${myCat.portfolio_category === 'basic_discovery' ? 'selected' : ''}>Basic/Discovery</option>
-                                            <option value="applied_integration" ${myCat.portfolio_category === 'applied_integration' ? 'selected' : ''}>Applied/Integration</option>
-                                            <option value="teaching_learning" ${myCat.portfolio_category === 'teaching_learning' ? 'selected' : ''}>Teaching/Learning</option>
+                                            <option value="">${t('-- Select --')}</option>
+                                            <option value="basic_discovery" ${myCat.portfolio_category === 'basic_discovery' ? 'selected' : ''}>${t('Basic/Discovery')}</option>
+                                            <option value="applied_integration" ${myCat.portfolio_category === 'applied_integration' ? 'selected' : ''}>${t('Applied/Integration')}</option>
+                                            <option value="teaching_learning" ${myCat.portfolio_category === 'teaching_learning' ? 'selected' : ''}>${t('Teaching/Learning')}</option>
                                         </select>
                                     </td>
                                     <td>
-                                        <button class="impact-btn ${hasImpact ? 'has-impact' : ''}" onclick="editImpact('${c.nva_id}')" title="${hasImpact ? escapeHtml(myCat.societal_impact) : 'Add societal impact'}">
-                                            ${hasImpact ? 'Edit' : 'Add'}
+                                        <button class="impact-btn ${hasImpact ? 'has-impact' : ''}" onclick="editImpact('${c.nva_id}')" title="${hasImpact ? escapeHtml(myCat.societal_impact) : t('Add societal impact')}">
+                                            ${hasImpact ? t('Edit') : t('Add')}
                                         </button>
                                     </td>
                                 </tr>
@@ -802,6 +816,7 @@
         }
 
         async function updateCategorization(nvaId, field, value) {
+            const { t } = i18n;
             try {
                 const body = {};
                 body[field] = value;
@@ -811,7 +826,7 @@
                     credentials: 'include',
                     body: JSON.stringify(body),
                 });
-                if (!response.ok) throw new Error('Failed to save');
+                if (!response.ok) throw new Error(t('Failed to save'));
 
                 // Update local data
                 const contrib = myContributions.find(c => c.nva_id === nvaId);
@@ -830,11 +845,12 @@
                     });
                 }
             } catch (error) {
-                alert('Failed to save categorization: ' + error.message);
+                alert(t('Failed to save categorization: ') + error.message);
             }
         }
 
         function editImpact(nvaId) {
+            const { t } = i18n;
             const contrib = myContributions.find(c => c.nva_id === nvaId);
             const currentImpact = contrib?.my_categorization?.societal_impact || '';
 
@@ -843,16 +859,16 @@
             modal.innerHTML = `
                 <div class="modal" style="max-width: 500px;">
                     <div class="modal-header">
-                        <h2>Societal Impact</h2>
+                        <h2>${t('Societal Impact')}</h2>
                         <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
                     </div>
                     <div class="modal-body">
-                        <p style="margin-bottom: 1rem; color: #64748b;">Describe any societal impact linked to this intellectual contribution.</p>
+                        <p style="margin-bottom: 1rem; color: #64748b;">${t('Describe any societal impact linked to this intellectual contribution.')}</p>
                         <textarea id="impact-text" class="form-input" rows="5" style="width: 100%;">${escapeHtml(currentImpact)}</textarea>
                     </div>
                     <div class="modal-footer">
-                        <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
-                        <button class="btn btn-primary" onclick="saveImpact('${nvaId}')">Save</button>
+                        <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">${t('Cancel')}</button>
+                        <button class="btn btn-primary" onclick="saveImpact('${nvaId}')">${t('Save')}</button>
                     </div>
                 </div>
             `;
@@ -875,9 +891,10 @@
         }
 
         async function loadMyActivities() {
+            const { t } = i18n;
             try {
                 const response = await fetch(`${API_BASE}/research/my-activities`, { credentials: 'include' });
-                if (!response.ok) throw new Error('Failed to load activities');
+                if (!response.ok) throw new Error(t('Failed to load activities'));
                 myActivities = await response.json();
                 renderActivities();
             } catch (error) {
@@ -886,9 +903,10 @@
         }
 
         function renderActivities() {
+            const { t } = i18n;
             const container = document.getElementById('activities-list');
             if (myActivities.length === 0) {
-                container.innerHTML = '<p class="text-muted">No professional activities recorded yet.</p>';
+                container.innerHTML = `<p class="text-muted">${t('No professional activities recorded yet.')}</p>`;
                 return;
             }
 
@@ -900,7 +918,7 @@
                                 <strong>${a.year}</strong> - ${a.activity_type}
                                 ${a.description ? `<span style="color: #64748b;"> - ${a.description}</span>` : ''}
                             </div>
-                            <button class="btn btn-sm btn-outline" style="color: #ef4444;" onclick="deleteActivity(${a.id})">Delete</button>
+                            <button class="btn btn-sm btn-outline" style="color: #ef4444;" onclick="deleteActivity(${a.id})">${t('Delete')}</button>
                         </div>
                     `).join('')}
                 </div>
@@ -908,12 +926,13 @@
         }
 
         async function addActivity() {
+            const { t } = i18n;
             const year = document.getElementById('activity-year').value;
             const type = document.getElementById('activity-type').value;
             const description = document.getElementById('activity-description').value;
 
             if (!year || !type) {
-                alert('Please select year and activity type');
+                alert(t('Please select year and activity type'));
                 return;
             }
 
@@ -924,32 +943,34 @@
                     credentials: 'include',
                     body: JSON.stringify({ year: parseInt(year), activity_type: type, description }),
                 });
-                if (!response.ok) throw new Error('Failed to add activity');
+                if (!response.ok) throw new Error(t('Failed to add activity'));
                 const newActivity = await response.json();
                 myActivities.unshift(newActivity);
                 renderActivities();
                 document.getElementById('activity-description').value = '';
             } catch (error) {
-                alert('Failed to add activity: ' + error.message);
+                alert(t('Failed to add activity: ') + error.message);
             }
         }
 
         async function deleteActivity(id) {
-            if (!confirm('Delete this activity?')) return;
+            const { t } = i18n;
+            if (!confirm(t('Delete this activity?'))) return;
             try {
                 const response = await fetch(`${API_BASE}/research/my-activities/${id}`, {
                     method: 'DELETE',
                     credentials: 'include',
                 });
-                if (!response.ok) throw new Error('Failed to delete');
+                if (!response.ok) throw new Error(t('Failed to delete'));
                 myActivities = myActivities.filter(a => a.id !== id);
                 renderActivities();
             } catch (error) {
-                alert('Failed to delete: ' + error.message);
+                alert(t('Failed to delete: ') + error.message);
             }
         }
 
         async function loadFacultyOverview() {
+            const { t } = i18n;
             document.getElementById('overview-loading').style.display = 'block';
             document.getElementById('overview-content').style.display = 'none';
 
@@ -959,7 +980,7 @@
                     year_to: selectedPeriod.year_to,
                 });
                 const response = await fetch(`${API_BASE}/research/faculty-overview?${params}`, { credentials: 'include' });
-                if (!response.ok) throw new Error('Failed to load overview');
+                if (!response.ok) throw new Error(t('Failed to load overview'));
                 const data = await response.json();
                 renderFacultyOverview(data);
             } catch (error) {
@@ -975,6 +996,7 @@
         }
 
         function renderFacultyOverview(data) {
+            const { t } = i18n;
             document.getElementById('overview-loading').style.display = 'none';
             const content = document.getElementById('overview-content');
             content.style.display = 'block';
@@ -998,46 +1020,46 @@
 
             content.innerHTML = `
                 <div class="period-selector">
-                    <label for="period-select">Evaluation Period:</label>
+                    <label for="period-select">${t('Evaluation Period:')}</label>
                     <select id="period-select" onchange="changePeriod(this.value)">
                         ${periodOptions.join('')}
                     </select>
-                    <span class="text-muted" style="margin-left: 0.5rem;">(6-year rolling window)</span>
+                    <span class="text-muted" style="margin-left: 0.5rem;">${t('(6-year rolling window)')}</span>
                 </div>
 
                 <div class="summary-stats">
                     <div class="stat-card">
                         <div class="stat-value">${summary.total_faculty}</div>
-                        <div class="stat-label">Total Faculty</div>
+                        <div class="stat-label">${t('Total Faculty')}</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-value" style="color: #059669;">${summary.meeting_requirements}</div>
-                        <div class="stat-label">Meeting Requirements</div>
+                        <div class="stat-label">${t('Meeting Requirements')}</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-value" style="color: #dc2626;">${summary.not_meeting}</div>
-                        <div class="stat-label">Action Needed</div>
+                        <div class="stat-label">${t('Action Needed')}</div>
                     </div>
                 </div>
 
-                <p style="margin-bottom: 1rem; color: #64748b;">Click "Manage" to edit ICs and activities, or "Timeline" to view qualification history and forecast.</p>
+                <p style="margin-bottom: 1rem; color: #64748b;">${t('Click "Manage" to edit ICs and activities, or "Timeline" to view qualification history and forecast.')}</p>
 
                 <div style="overflow-x: auto;">
                     <table class="faculty-overview-table" id="faculty-table">
                         <thead>
                             <tr>
-                                <th class="sortable ${facultySortState.column === 'name' ? facultySortState.direction : ''}" data-sort="name">Name</th>
-                                <th class="sortable ${facultySortState.column === 'category' ? facultySortState.direction : ''}" data-sort="category">Category</th>
-                                <th class="sortable ${facultySortState.column === 'employment' ? facultySortState.direction : ''}" data-sort="employment">FTE %</th>
-                                <th>Degree</th>
-                                <th>Disciplines</th>
-                                <th class="sortable ${facultySortState.column === 'prj' ? facultySortState.direction : ''}" data-sort="prj">PRJ</th>
-                                <th class="sortable ${facultySortState.column === 'other_ic' ? facultySortState.direction : ''}" data-sort="other_ic">Other IC</th>
-                                <th class="sortable ${facultySortState.column === 'total_ic' ? facultySortState.direction : ''}" data-sort="total_ic">Total IC</th>
-                                <th class="sortable ${facultySortState.column === 'activities' ? facultySortState.direction : ''}" data-sort="activities">Activities</th>
-                                <th class="sortable ${facultySortState.column === 'status' ? facultySortState.direction : ''}" data-sort="status">Status</th>
-                                <th>Exempt</th>
-                                <th>Actions</th>
+                                <th class="sortable ${facultySortState.column === 'name' ? facultySortState.direction : ''}" data-sort="name">${t('Name')}</th>
+                                <th class="sortable ${facultySortState.column === 'category' ? facultySortState.direction : ''}" data-sort="category">${t('Category')}</th>
+                                <th class="sortable ${facultySortState.column === 'employment' ? facultySortState.direction : ''}" data-sort="employment">${t('FTE %')}</th>
+                                <th>${t('Degree')}</th>
+                                <th>${t('Disciplines')}</th>
+                                <th class="sortable ${facultySortState.column === 'prj' ? facultySortState.direction : ''}" data-sort="prj">${t('PRJ')}</th>
+                                <th class="sortable ${facultySortState.column === 'other_ic' ? facultySortState.direction : ''}" data-sort="other_ic">${t('Other IC')}</th>
+                                <th class="sortable ${facultySortState.column === 'total_ic' ? facultySortState.direction : ''}" data-sort="total_ic">${t('Total IC')}</th>
+                                <th class="sortable ${facultySortState.column === 'activities' ? facultySortState.direction : ''}" data-sort="activities">${t('Activities')}</th>
+                                <th class="sortable ${facultySortState.column === 'status' ? facultySortState.direction : ''}" data-sort="status">${t('Status')}</th>
+                                <th>${t('Exempt')}</th>
+                                <th>${t('Actions')}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1054,15 +1076,15 @@
                                     <td>${f.activities}</td>
                                     <td>
                                         <span class="status-badge ${f.requirements_met ? 'status-met' : 'status-not-met'}" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
-                                            ${f.requirements_met ? 'OK' : 'Action'}
+                                            ${f.requirements_met ? t('OK') : t('Action')}
                                         </span>
                                     </td>
                                     <td>
-                                        ${f.has_exemptions ? `<span class="badge" style="background: #fef3c7; color: #92400e;" title="${f.exemption_count} exemption(s)">${f.exemption_count}</span>` : '-'}
+                                        ${f.has_exemptions ? `<span class="badge" style="background: #fef3c7; color: #92400e;" title="${f.exemption_count} ${t('exemption(s)')}">${f.exemption_count}</span>` : '-'}
                                     </td>
                                     <td style="white-space: nowrap;">
-                                        <button class="btn btn-sm btn-outline" onclick="manageUser(${f.id}, '${escapeHtml(f.name)}')">Manage</button>
-                                        <button class="btn btn-sm btn-outline" onclick="showTimeline(${f.id}, '${escapeHtml(f.name)}')" style="margin-left: 0.25rem;">Timeline</button>
+                                        <button class="btn btn-sm btn-outline" onclick="manageUser(${f.id}, '${escapeHtml(f.name)}')">${t('Manage')}</button>
+                                        <button class="btn btn-sm btn-outline" onclick="showTimeline(${f.id}, '${escapeHtml(f.name)}')" style="margin-left: 0.25rem;">${t('Timeline')}</button>
                                     </td>
                                 </tr>
                             `).join('')}
@@ -1071,7 +1093,7 @@
                 </div>
 
                 <p class="text-muted" style="text-align: center; margin-top: 1rem;">
-                    Evaluation period: ${data.period.year_from} - ${data.period.year_to}
+                    ${t('Evaluation period:')} ${data.period.year_from} - ${data.period.year_to}
                 </p>
             `;
 
@@ -1140,6 +1162,7 @@
         let facultyOverviewData = null;
 
         async function manageUser(userId, userName) {
+            const { t } = i18n;
             managingUserId = userId;
             managingUserName = userName;
 
@@ -1152,15 +1175,15 @@
             content.innerHTML = `
                 <div class="status-card">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <h2 style="margin: 0;">Managing: ${escapeHtml(userName)}</h2>
-                        <button class="btn btn-outline" onclick="backToOverview()">Back to Overview</button>
+                        <h2 style="margin: 0;">${t('Managing:')} ${escapeHtml(userName)}</h2>
+                        <button class="btn btn-outline" onclick="backToOverview()">${t('Back to Overview')}</button>
                     </div>
                 </div>
 
                 <div class="tabs" style="margin-top: 1rem;">
-                    <button class="tab active" onclick="showManageTab('contrib')">Contributions</button>
-                    <button class="tab" onclick="showManageTab('activ')">Professional Activities</button>
-                    <button class="tab" onclick="showManageTab('exempt')">Exemptions</button>
+                    <button class="tab active" onclick="showManageTab('contrib')">${t('Contributions')}</button>
+                    <button class="tab" onclick="showManageTab('activ')">${t('Professional Activities')}</button>
+                    <button class="tab" onclick="showManageTab('exempt')">${t('Exemptions')}</button>
                 </div>
 
                 <div id="manage-contrib" class="manage-section">
@@ -1192,10 +1215,11 @@
         }
 
         async function loadManagedUserContributions() {
+            const { t } = i18n;
             const container = document.getElementById('manage-contrib');
             try {
                 const response = await fetch(`${API_BASE}/research/admin/user/${managingUserId}/contributions`, { credentials: 'include' });
-                if (!response.ok) throw new Error('Failed to load');
+                if (!response.ok) throw new Error(t('Failed to load'));
                 const data = await response.json();
                 managingUserContributions = data.contributions || [];
                 renderManagedContributions();
@@ -1205,9 +1229,10 @@
         }
 
         function renderManagedContributions() {
+            const { t } = i18n;
             const container = document.getElementById('manage-contrib');
             if (managingUserContributions.length === 0) {
-                container.innerHTML = '<p class="text-muted">No contributions found. Make sure the researcher ID is configured.</p>';
+                container.innerHTML = `<p class="text-muted">${t('No contributions found. Make sure the researcher ID is configured.')}</p>`;
                 return;
             }
 
@@ -1215,16 +1240,16 @@
             const sorted = sortContributions([...managingUserContributions], managedSortState.column, managedSortState.direction);
 
             container.innerHTML = `
-                <p style="margin-bottom: 1rem;"><strong>${managingUserContributions.length}</strong> contributions found.</p>
+                <p style="margin-bottom: 1rem;"><strong>${managingUserContributions.length}</strong> ${t('contributions found.')}</p>
                 <table class="ic-table">
                     <thead>
                         <tr>
-                            <th class="sortable ${managedSortState.column === 'year' ? managedSortState.direction : ''}" data-sort="year" data-table="managed">Year</th>
-                            <th class="sortable ic-title ${managedSortState.column === 'title' ? managedSortState.direction : ''}" data-sort="title" data-table="managed">Title</th>
-                            <th class="sortable ${managedSortState.column === 'type' ? managedSortState.direction : ''}" data-sort="type" data-table="managed">Type</th>
-                            <th>Publication Type</th>
-                            <th>Portfolio Category</th>
-                            <th>Impact</th>
+                            <th class="sortable ${managedSortState.column === 'year' ? managedSortState.direction : ''}" data-sort="year" data-table="managed">${t('Year')}</th>
+                            <th class="sortable ic-title ${managedSortState.column === 'title' ? managedSortState.direction : ''}" data-sort="title" data-table="managed">${t('Title')}</th>
+                            <th class="sortable ${managedSortState.column === 'type' ? managedSortState.direction : ''}" data-sort="type" data-table="managed">${t('Type')}</th>
+                            <th>${t('Publication Type')}</th>
+                            <th>${t('Portfolio Category')}</th>
+                            <th>${t('Impact')}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1239,23 +1264,23 @@
                                     <td>${c.type || '-'}</td>
                                     <td>
                                         <select class="cat-select ${cat.publication_type ? 'categorized' : ''}" onchange="updateManagedCategorization('${c.nva_id}', 'publication_type', this.value)">
-                                            <option value="">-- Select --</option>
-                                            <option value="prj_article" ${cat.publication_type === 'prj_article' ? 'selected' : ''}>PRJ Article</option>
-                                            <option value="peer_reviewed_other" ${cat.publication_type === 'peer_reviewed_other' ? 'selected' : ''}>Peer-reviewed Other</option>
-                                            <option value="other_ic" ${cat.publication_type === 'other_ic' ? 'selected' : ''}>Other IC</option>
+                                            <option value="">${t('-- Select --')}</option>
+                                            <option value="prj_article" ${cat.publication_type === 'prj_article' ? 'selected' : ''}>${t('PRJ Article')}</option>
+                                            <option value="peer_reviewed_other" ${cat.publication_type === 'peer_reviewed_other' ? 'selected' : ''}>${t('Peer-reviewed Other')}</option>
+                                            <option value="other_ic" ${cat.publication_type === 'other_ic' ? 'selected' : ''}>${t('Other IC')}</option>
                                         </select>
                                     </td>
                                     <td>
                                         <select class="cat-select ${cat.portfolio_category ? 'categorized' : ''}" onchange="updateManagedCategorization('${c.nva_id}', 'portfolio_category', this.value)">
-                                            <option value="">-- Select --</option>
-                                            <option value="basic_discovery" ${cat.portfolio_category === 'basic_discovery' ? 'selected' : ''}>Basic/Discovery</option>
-                                            <option value="applied_integration" ${cat.portfolio_category === 'applied_integration' ? 'selected' : ''}>Applied/Integration</option>
-                                            <option value="teaching_learning" ${cat.portfolio_category === 'teaching_learning' ? 'selected' : ''}>Teaching/Learning</option>
+                                            <option value="">${t('-- Select --')}</option>
+                                            <option value="basic_discovery" ${cat.portfolio_category === 'basic_discovery' ? 'selected' : ''}>${t('Basic/Discovery')}</option>
+                                            <option value="applied_integration" ${cat.portfolio_category === 'applied_integration' ? 'selected' : ''}>${t('Applied/Integration')}</option>
+                                            <option value="teaching_learning" ${cat.portfolio_category === 'teaching_learning' ? 'selected' : ''}>${t('Teaching/Learning')}</option>
                                         </select>
                                     </td>
                                     <td>
                                         <button class="impact-btn ${cat.societal_impact ? 'has-impact' : ''}" onclick="editManagedImpact('${c.nva_id}')">
-                                            ${cat.societal_impact ? 'Edit' : 'Add'}
+                                            ${cat.societal_impact ? t('Edit') : t('Add')}
                                         </button>
                                     </td>
                                 </tr>
@@ -1282,6 +1307,7 @@
         }
 
         async function updateManagedCategorization(nvaId, field, value) {
+            const { t } = i18n;
             try {
                 const body = {};
                 body[field] = value;
@@ -1291,7 +1317,7 @@
                     credentials: 'include',
                     body: JSON.stringify(body),
                 });
-                if (!response.ok) throw new Error('Failed to save');
+                if (!response.ok) throw new Error(t('Failed to save'));
 
                 // Update local data
                 const contrib = managingUserContributions.find(c => c.nva_id === nvaId);
@@ -1309,11 +1335,12 @@
                     });
                 }
             } catch (error) {
-                alert('Failed to save: ' + error.message);
+                alert(t('Failed to save: ') + error.message);
             }
         }
 
         function editManagedImpact(nvaId) {
+            const { t } = i18n;
             const contrib = managingUserContributions.find(c => c.nva_id === nvaId);
             const currentImpact = contrib?.categorization?.societal_impact || '';
 
@@ -1322,16 +1349,16 @@
             modal.innerHTML = `
                 <div class="modal" style="max-width: 500px;">
                     <div class="modal-header">
-                        <h2>Societal Impact</h2>
+                        <h2>${t('Societal Impact')}</h2>
                         <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
                     </div>
                     <div class="modal-body">
-                        <p style="margin-bottom: 1rem; color: #64748b;">Describe any societal impact for ${escapeHtml(managingUserName)}.</p>
+                        <p style="margin-bottom: 1rem; color: #64748b;">${t('Describe any societal impact for')} ${escapeHtml(managingUserName)}.</p>
                         <textarea id="managed-impact-text" class="form-input" rows="5" style="width: 100%;">${escapeHtml(currentImpact)}</textarea>
                     </div>
                     <div class="modal-footer">
-                        <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
-                        <button class="btn btn-primary" onclick="saveManagedImpact('${nvaId}')">Save</button>
+                        <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">${t('Cancel')}</button>
+                        <button class="btn btn-primary" onclick="saveManagedImpact('${nvaId}')">${t('Save')}</button>
                     </div>
                 </div>
             `;
@@ -1346,9 +1373,10 @@
         }
 
         async function loadManagedUserActivities() {
+            const { t } = i18n;
             try {
                 const response = await fetch(`${API_BASE}/research/admin/user/${managingUserId}/activities`, { credentials: 'include' });
-                if (!response.ok) throw new Error('Failed to load');
+                if (!response.ok) throw new Error(t('Failed to load'));
                 const data = await response.json();
                 managingUserActivities = data.activities || [];
                 renderManagedActivities();
@@ -1358,34 +1386,35 @@
         }
 
         function renderManagedActivities() {
+            const { t } = i18n;
             const container = document.getElementById('manage-activ');
             container.innerHTML = `
                 <div class="status-card">
-                    <h3>Add Professional Activity for ${escapeHtml(managingUserName)}</h3>
+                    <h3>${t('Add Professional Activity for')} ${escapeHtml(managingUserName)}</h3>
                     <div class="activity-form">
-                        <input type="number" id="managed-activity-year" placeholder="Year" min="2015" max="2030" value="2025" style="width: 80px;">
+                        <input type="number" id="managed-activity-year" placeholder="${t('Year')}" min="2015" max="2030" value="2025" style="width: 80px;">
                         <select id="managed-activity-type" style="min-width: 200px;">
-                            <option value="">Select activity type...</option>
-                            <option value="Faculty internship">Faculty internship</option>
-                            <option value="Business advisory/consulting">Business advisory/consulting</option>
-                            <option value="Professional organization officer">Professional organization officer</option>
-                            <option value="Workshop/conference speaker">Workshop/conference speaker</option>
-                            <option value="Professional publication">Professional publication</option>
-                            <option value="Professional workshop participant">Professional workshop participant</option>
-                            <option value="Professional certification">Professional certification</option>
-                            <option value="Board member">Board member</option>
-                            <option value="Media expert appearance">Media expert appearance</option>
-                            <option value="Policymaking participation">Policymaking participation</option>
-                            <option value="Chronicle/op-ed">Chronicle/op-ed</option>
-                            <option value="Executive education">Executive education</option>
-                            <option value="Other professional engagement">Other professional engagement</option>
+                            <option value="">${t('Select activity type...')}</option>
+                            <option value="Faculty internship">${t('Faculty internship')}</option>
+                            <option value="Business advisory/consulting">${t('Business advisory/consulting')}</option>
+                            <option value="Professional organization officer">${t('Professional organization officer')}</option>
+                            <option value="Workshop/conference speaker">${t('Workshop/conference speaker')}</option>
+                            <option value="Professional publication">${t('Professional publication')}</option>
+                            <option value="Professional workshop participant">${t('Professional workshop participant')}</option>
+                            <option value="Professional certification">${t('Professional certification')}</option>
+                            <option value="Board member">${t('Board member')}</option>
+                            <option value="Media expert appearance">${t('Media expert appearance')}</option>
+                            <option value="Policymaking participation">${t('Policymaking participation')}</option>
+                            <option value="Chronicle/op-ed">${t('Chronicle/op-ed')}</option>
+                            <option value="Executive education">${t('Executive education')}</option>
+                            <option value="Other professional engagement">${t('Other professional engagement')}</option>
                         </select>
-                        <input type="text" id="managed-activity-description" placeholder="Description (optional)" style="flex: 1; min-width: 200px;">
-                        <button class="btn btn-primary" onclick="addManagedActivity()">Add</button>
+                        <input type="text" id="managed-activity-description" placeholder="${t('Description (optional)')}" style="flex: 1; min-width: 200px;">
+                        <button class="btn btn-primary" onclick="addManagedActivity()">${t('Add')}</button>
                     </div>
                 </div>
 
-                ${managingUserActivities.length === 0 ? '<p class="text-muted">No professional activities recorded.</p>' : `
+                ${managingUserActivities.length === 0 ? `<p class="text-muted">${t('No professional activities recorded.')}</p>` : `
                     <div class="activity-list">
                         ${managingUserActivities.map(a => `
                             <div class="activity-item">
@@ -1393,7 +1422,7 @@
                                     <strong>${a.year}</strong> - ${a.activity_type}
                                     ${a.description ? `<span style="color: #64748b;"> - ${a.description}</span>` : ''}
                                 </div>
-                                <button class="btn btn-sm btn-outline" style="color: #ef4444;" onclick="deleteManagedActivity(${a.id})">Delete</button>
+                                <button class="btn btn-sm btn-outline" style="color: #ef4444;" onclick="deleteManagedActivity(${a.id})">${t('Delete')}</button>
                             </div>
                         `).join('')}
                     </div>
@@ -1402,12 +1431,13 @@
         }
 
         async function addManagedActivity() {
+            const { t } = i18n;
             const year = document.getElementById('managed-activity-year').value;
             const type = document.getElementById('managed-activity-type').value;
             const description = document.getElementById('managed-activity-description').value;
 
             if (!year || !type) {
-                alert('Please select year and activity type');
+                alert(t('Please select year and activity type'));
                 return;
             }
 
@@ -1418,27 +1448,28 @@
                     credentials: 'include',
                     body: JSON.stringify({ year: parseInt(year), activity_type: type, description }),
                 });
-                if (!response.ok) throw new Error('Failed to add');
+                if (!response.ok) throw new Error(t('Failed to add'));
                 const newActivity = await response.json();
                 managingUserActivities.unshift(newActivity);
                 renderManagedActivities();
             } catch (error) {
-                alert('Failed to add: ' + error.message);
+                alert(t('Failed to add: ') + error.message);
             }
         }
 
         async function deleteManagedActivity(activityId) {
-            if (!confirm('Delete this activity?')) return;
+            const { t } = i18n;
+            if (!confirm(t('Delete this activity?'))) return;
             try {
                 const response = await fetch(`${API_BASE}/research/admin/user/${managingUserId}/activities/${activityId}`, {
                     method: 'DELETE',
                     credentials: 'include',
                 });
-                if (!response.ok) throw new Error('Failed to delete');
+                if (!response.ok) throw new Error(t('Failed to delete'));
                 managingUserActivities = managingUserActivities.filter(a => a.id !== activityId);
                 renderManagedActivities();
             } catch (error) {
-                alert('Failed to delete: ' + error.message);
+                alert(t('Failed to delete: ') + error.message);
             }
         }
 
@@ -1457,9 +1488,10 @@
         // ============================================
 
         async function loadExemptionTypes() {
+            const { t } = i18n;
             try {
                 const response = await fetch(`${API_BASE}/research/exemption-types`, { credentials: 'include' });
-                if (!response.ok) throw new Error('Failed to load exemption types');
+                if (!response.ok) throw new Error(t('Failed to load exemption types'));
                 exemptionTypes = await response.json();
             } catch (error) {
                 console.error('Error loading exemption types:', error);
@@ -1468,9 +1500,10 @@
         }
 
         async function loadManagedUserExemptions() {
+            const { t } = i18n;
             try {
                 const response = await fetch(`${API_BASE}/research/admin/user/${managingUserId}/exemptions`, { credentials: 'include' });
-                if (!response.ok) throw new Error('Failed to load exemptions');
+                if (!response.ok) throw new Error(t('Failed to load exemptions'));
                 const data = await response.json();
                 managingUserExemptions = data.exemptions || [];
                 renderManagedExemptions();
@@ -1480,43 +1513,44 @@
         }
 
         function renderManagedExemptions() {
+            const { t } = i18n;
             const container = document.getElementById('manage-exempt');
             const currentYear = 2025;
 
             container.innerHTML = `
                 <div class="status-card">
-                    <h3>Add Exemption for ${escapeHtml(managingUserName)}</h3>
-                    <p class="text-muted" style="margin-bottom: 1rem;">Exemptions reduce or waive qualification requirements for faculty with administrative duties, new doctoral graduates, or other special circumstances.</p>
+                    <h3>${t('Add Exemption for')} ${escapeHtml(managingUserName)}</h3>
+                    <p class="text-muted" style="margin-bottom: 1rem;">${t('Exemptions reduce or waive qualification requirements for faculty with administrative duties, new doctoral graduates, or other special circumstances.')}</p>
                     <div class="activity-form" style="flex-wrap: wrap;">
                         <select id="exemption-type" style="min-width: 200px;">
-                            <option value="">Select exemption type...</option>
+                            <option value="">${t('Select exemption type...')}</option>
                             ${exemptionTypes.map(t => `
                                 <option value="${t.id}" title="${escapeHtml(t.description || '')}">${t.name}</option>
                             `).join('')}
                         </select>
                         <div style="display: flex; align-items: center; gap: 0.5rem;">
-                            <label>From:</label>
-                            <input type="number" id="exemption-year-from" placeholder="Start year" min="2015" max="2035" value="${currentYear}" style="width: 80px;">
+                            <label>${t('From:')}</label>
+                            <input type="number" id="exemption-year-from" placeholder="${t('Start year')}" min="2015" max="2035" value="${currentYear}" style="width: 80px;">
                         </div>
                         <div style="display: flex; align-items: center; gap: 0.5rem;">
-                            <label>To:</label>
-                            <input type="number" id="exemption-year-to" placeholder="End year (optional)" min="2015" max="2035" style="width: 80px;">
+                            <label>${t('To:')}</label>
+                            <input type="number" id="exemption-year-to" placeholder="${t('End year (optional)')}" min="2015" max="2035" style="width: 80px;">
                         </div>
-                        <input type="text" id="exemption-notes" placeholder="Notes (optional)" style="flex: 1; min-width: 200px;">
-                        <button class="btn btn-primary" onclick="addManagedExemption()">Add</button>
+                        <input type="text" id="exemption-notes" placeholder="${t('Notes (optional)')}" style="flex: 1; min-width: 200px;">
+                        <button class="btn btn-primary" onclick="addManagedExemption()">${t('Add')}</button>
                     </div>
                     <div id="exemption-type-info" style="margin-top: 0.5rem; font-size: 0.85rem; color: #64748b;"></div>
                 </div>
 
-                ${managingUserExemptions.length === 0 ? '<p class="text-muted">No exemptions recorded.</p>' : `
+                ${managingUserExemptions.length === 0 ? `<p class="text-muted">${t('No exemptions recorded.')}</p>` : `
                     <table class="ic-table" style="margin-top: 1rem;">
                         <thead>
                             <tr>
-                                <th>Exemption Type</th>
-                                <th>Period</th>
-                                <th>Notes</th>
-                                <th>Approved By</th>
-                                <th>Actions</th>
+                                <th>${t('Exemption Type')}</th>
+                                <th>${t('Period')}</th>
+                                <th>${t('Notes')}</th>
+                                <th>${t('Approved By')}</th>
+                                <th>${t('Actions')}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1524,13 +1558,13 @@
                                 <tr>
                                     <td>
                                         <strong>${e.exemption_type.name}</strong>
-                                        ${e.exemption_type.grants_full_exemption ? '<span class="badge" style="background: #dcfce7; color: #166534; margin-left: 0.5rem;">Full</span>' : ''}
+                                        ${e.exemption_type.grants_full_exemption ? `<span class="badge" style="background: #dcfce7; color: #166534; margin-left: 0.5rem;">${t('Full')}</span>` : ''}
                                     </td>
-                                    <td>${e.year_from}${e.year_to ? ' - ' + e.year_to : ' - ongoing'}</td>
+                                    <td>${e.year_from}${e.year_to ? ' - ' + e.year_to : ' - ' + t('ongoing')}</td>
                                     <td class="text-muted">${e.notes || '-'}</td>
                                     <td class="text-muted">${e.approved_by || '-'}</td>
                                     <td>
-                                        <button class="btn btn-sm btn-outline" style="color: #ef4444;" onclick="deleteManagedExemption(${e.id})">Delete</button>
+                                        <button class="btn btn-sm btn-outline" style="color: #ef4444;" onclick="deleteManagedExemption(${e.id})">${t('Delete')}</button>
                                     </td>
                                 </tr>
                             `).join('')}
@@ -1539,19 +1573,19 @@
                 `}
 
                 <div class="status-card" style="margin-top: 1.5rem;">
-                    <h4>Available Exemption Types</h4>
+                    <h4>${t('Available Exemption Types')}</h4>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; margin-top: 1rem;">
-                        ${exemptionTypes.map(t => `
+                        ${exemptionTypes.map(et => `
                             <div style="padding: 0.75rem; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0;">
-                                <strong>${t.name}</strong>
-                                ${t.grants_full_exemption ? '<span class="badge" style="background: #dcfce7; color: #166534; margin-left: 0.5rem;">Full Exemption</span>' : ''}
-                                <p style="font-size: 0.85rem; color: #64748b; margin: 0.5rem 0 0 0;">${t.description || 'No description'}</p>
-                                ${!t.grants_full_exemption && (t.ic_reduction || t.prj_reduction || t.activity_reduction) ? `
+                                <strong>${et.name}</strong>
+                                ${et.grants_full_exemption ? `<span class="badge" style="background: #dcfce7; color: #166534; margin-left: 0.5rem;">${t('Full Exemption')}</span>` : ''}
+                                <p style="font-size: 0.85rem; color: #64748b; margin: 0.5rem 0 0 0;">${et.description || t('No description')}</p>
+                                ${!et.grants_full_exemption && (et.ic_reduction || et.prj_reduction || et.activity_reduction) ? `
                                     <p style="font-size: 0.8rem; color: #0369a1; margin: 0.25rem 0 0 0;">
-                                        Reduces: ${[
-                                            t.ic_reduction ? `IC -${t.ic_reduction}` : '',
-                                            t.prj_reduction ? `PRJ -${t.prj_reduction}` : '',
-                                            t.activity_reduction ? `Activities -${t.activity_reduction}` : ''
+                                        ${t('Reduces:')} ${[
+                                            et.ic_reduction ? `IC -${et.ic_reduction}` : '',
+                                            et.prj_reduction ? `PRJ -${et.prj_reduction}` : '',
+                                            et.activity_reduction ? `${t('Activities')} -${et.activity_reduction}` : ''
                                         ].filter(Boolean).join(', ')}
                                     </p>
                                 ` : ''}
@@ -1563,19 +1597,20 @@
 
             // Add event listener for exemption type selection
             document.getElementById('exemption-type').addEventListener('change', function() {
+                const { t } = i18n;
                 const typeId = parseInt(this.value);
                 const type = exemptionTypes.find(t => t.id === typeId);
                 const infoDiv = document.getElementById('exemption-type-info');
                 if (type) {
                     let info = type.description || '';
                     if (type.grants_full_exemption) {
-                        info += ' <strong>(Full exemption - requirements automatically met)</strong>';
+                        info += ` <strong>(${t('Full exemption - requirements automatically met')})</strong>`;
                     } else if (type.ic_reduction || type.prj_reduction || type.activity_reduction) {
                         const reductions = [];
-                        if (type.ic_reduction) reductions.push(`IC requirement -${type.ic_reduction}`);
-                        if (type.prj_reduction) reductions.push(`PRJ requirement -${type.prj_reduction}`);
-                        if (type.activity_reduction) reductions.push(`Activity requirement -${type.activity_reduction}`);
-                        info += ` <strong>(Reductions: ${reductions.join(', ')})</strong>`;
+                        if (type.ic_reduction) reductions.push(`${t('IC requirement')} -${type.ic_reduction}`);
+                        if (type.prj_reduction) reductions.push(`${t('PRJ requirement')} -${type.prj_reduction}`);
+                        if (type.activity_reduction) reductions.push(`${t('Activity requirement')} -${type.activity_reduction}`);
+                        info += ` <strong>(${t('Reductions:')} ${reductions.join(', ')})</strong>`;
                     }
                     infoDiv.innerHTML = info;
                 } else {
@@ -1585,13 +1620,14 @@
         }
 
         async function addManagedExemption() {
+            const { t } = i18n;
             const typeId = document.getElementById('exemption-type').value;
             const yearFrom = document.getElementById('exemption-year-from').value;
             const yearTo = document.getElementById('exemption-year-to').value;
             const notes = document.getElementById('exemption-notes').value;
 
             if (!typeId || !yearFrom) {
-                alert('Please select exemption type and start year');
+                alert(t('Please select exemption type and start year'));
                 return;
             }
 
@@ -1607,25 +1643,26 @@
                         notes: notes || null,
                     }),
                 });
-                if (!response.ok) throw new Error('Failed to add exemption');
+                if (!response.ok) throw new Error(t('Failed to add exemption'));
                 await loadManagedUserExemptions();
             } catch (error) {
-                alert('Failed to add exemption: ' + error.message);
+                alert(t('Failed to add exemption: ') + error.message);
             }
         }
 
         async function deleteManagedExemption(exemptionId) {
-            if (!confirm('Delete this exemption?')) return;
+            const { t } = i18n;
+            if (!confirm(t('Delete this exemption?'))) return;
             try {
                 const response = await fetch(`${API_BASE}/research/admin/user/${managingUserId}/exemptions/${exemptionId}`, {
                     method: 'DELETE',
                     credentials: 'include',
                 });
-                if (!response.ok) throw new Error('Failed to delete');
+                if (!response.ok) throw new Error(t('Failed to delete'));
                 managingUserExemptions = managingUserExemptions.filter(e => e.id !== exemptionId);
                 renderManagedExemptions();
             } catch (error) {
-                alert('Failed to delete exemption: ' + error.message);
+                alert(t('Failed to delete exemption: ') + error.message);
             }
         }
 
@@ -1634,6 +1671,7 @@
         // ============================================
 
         async function showTimeline(userId, userName) {
+            const { t } = i18n;
             // Show loading modal
             const modal = document.createElement('div');
             modal.className = 'modal-overlay active';
@@ -1641,7 +1679,7 @@
             modal.innerHTML = `
                 <div class="modal" style="max-width: 900px;">
                     <div class="modal-header">
-                        <h2>Qualification Timeline - ${escapeHtml(userName)}</h2>
+                        <h2>${t('Qualification Timeline')} - ${escapeHtml(userName)}</h2>
                         <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
                     </div>
                     <div class="modal-body">
@@ -1653,7 +1691,7 @@
 
             try {
                 const response = await fetch(`${API_BASE}/research/admin/user/${userId}/timeline`, { credentials: 'include' });
-                if (!response.ok) throw new Error('Failed to load timeline');
+                if (!response.ok) throw new Error(t('Failed to load timeline'));
                 const data = await response.json();
                 renderTimeline(data);
             } catch (error) {
@@ -1662,6 +1700,7 @@
         }
 
         function renderTimeline(data) {
+            const { t } = i18n;
             const modalBody = document.querySelector('#timeline-modal .modal-body');
 
             const user = data.user;
@@ -1679,7 +1718,7 @@
                         <div class="timeline-year">
                             <div class="timeline-year-label">${yearData.year}</div>
                             <div class="timeline-year-content">
-                                <div class="timeline-empty">No qualifying activities</div>
+                                <div class="timeline-empty">${t('No qualifying activities')}</div>
                             </div>
                         </div>
                     `;
@@ -1696,7 +1735,7 @@
                     for (const act of activities) {
                         contentHtml += `
                             <div class="timeline-item activity">
-                                [Activity] ${act.activity_type}${act.description ? ': ' + truncate(act.description, 50) : ''}
+                                [${t('Activity')}] ${act.activity_type}${act.description ? ': ' + truncate(act.description, 50) : ''}
                             </div>
                         `;
                     }
@@ -1717,13 +1756,13 @@
                 const futureClass = w.is_future ? 'future' : '';
                 const stats = user.faculty_category === 'SA' || user.faculty_category === 'SP'
                     ? `PRJ: ${w.prj_count}, IC: ${w.total_ics}`
-                    : `Act: ${w.activities}`;
+                    : `${t('Act:')} ${w.activities}`;
 
                 windowsHtml += `
-                    <div class="window-card ${statusClass} ${currentClass} ${futureClass}" title="${w.status_notes.join(', ') || 'Requirements met'}">
+                    <div class="window-card ${statusClass} ${currentClass} ${futureClass}" title="${w.status_notes.join(', ') || t('Requirements met')}">
                         <div class="window-period">${w.period}</div>
                         <div class="window-stats">${stats}</div>
-                        ${w.is_current ? '<div style="font-size: 0.65rem;">Current</div>' : ''}
+                        ${w.is_current ? `<div style="font-size: 0.65rem;">${t('Current')}</div>` : ''}
                     </div>
                 `;
             }
@@ -1734,9 +1773,9 @@
                 const riskPeriods = data.risk_periods.map(r => r.period).join(', ');
                 riskHtml = `
                     <div class="risk-warning">
-                        <h4>At Risk of Losing Qualification</h4>
-                        <p>Based on current activities, this researcher may not meet requirements for: <strong>${riskPeriods}</strong></p>
-                        <p style="margin-top: 0.5rem;">Review their contributions and consider actions needed to maintain qualification.</p>
+                        <h4>${t('At Risk of Losing Qualification')}</h4>
+                        <p>${t('Based on current activities, this researcher may not meet requirements for:')} <strong>${riskPeriods}</strong></p>
+                        <p style="margin-top: 0.5rem;">${t('Review their contributions and consider actions needed to maintain qualification.')}</p>
                     </div>
                 `;
             }
@@ -1746,10 +1785,10 @@
             if (data.exemptions && data.exemptions.length > 0) {
                 exemptionsHtml = `
                     <div style="margin-top: 1rem; padding: 0.75rem; background: #f8fafc; border-radius: 6px;">
-                        <strong>Active Exemptions:</strong>
+                        <strong>${t('Active Exemptions:')}</strong>
                         ${data.exemptions.map(e => `
                             <span class="badge" style="background: #fef3c7; color: #92400e; margin-left: 0.5rem;">
-                                ${e.type} (${e.year_from}${e.year_to ? '-' + e.year_to : '+'}${e.grants_full_exemption ? ' - Full' : ''})
+                                ${e.type} (${e.year_from}${e.year_to ? '-' + e.year_to : '+'}${e.grants_full_exemption ? ' - ' + t('Full') : ''})
                             </span>
                         `).join('')}
                     </div>
@@ -1758,16 +1797,16 @@
 
             modalBody.innerHTML = `
                 <div style="margin-bottom: 1rem;">
-                    <p><strong>Category:</strong> <span class="badge badge-category">${user.faculty_category || 'Not set'}</span></p>
-                    <p><strong>Degree:</strong> ${user.highest_degree || '-'}${user.degree_year ? ` (${user.degree_year})` : ''}</p>
-                    <p><strong>Total ICs:</strong> ${data.totals.total_ics} (${data.totals.total_prj} PRJ) | <strong>Total Activities:</strong> ${data.totals.total_activities}</p>
+                    <p><strong>${t('Category:')}</strong> <span class="badge badge-category">${user.faculty_category || t('Not set')}</span></p>
+                    <p><strong>${t('Degree:')}</strong> ${user.highest_degree || '-'}${user.degree_year ? ` (${user.degree_year})` : ''}</p>
+                    <p><strong>${t('Total ICs:')}</strong> ${data.totals.total_ics} (${data.totals.total_prj} PRJ) | <strong>${t('Total Activities:')}</strong> ${data.totals.total_activities}</p>
                 </div>
 
                 ${exemptionsHtml}
 
                 <div class="rolling-windows">
-                    <h4 style="margin-bottom: 0.5rem;">6-Year Rolling Windows</h4>
-                    <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.5rem;">Green = meets requirements, Red = does not meet requirements. Blue border = current evaluation period.</p>
+                    <h4 style="margin-bottom: 0.5rem;">${t('6-Year Rolling Windows')}</h4>
+                    <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.5rem;">${t('Green = meets requirements, Red = does not meet requirements. Blue border = current evaluation period.')}</p>
                     <div style="display: flex; flex-wrap: wrap; gap: 0.25rem;">
                         ${windowsHtml}
                     </div>
@@ -1775,9 +1814,9 @@
 
                 ${riskHtml}
 
-                <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem;">Activity Timeline</h4>
+                <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem;">${t('Activity Timeline')}</h4>
                 <div class="timeline-container" style="border: 1px solid #e2e8f0; border-radius: 6px; padding: 1rem; background: #fafafa;">
-                    ${timelineHtml || '<p class="text-muted">No activities recorded</p>'}
+                    ${timelineHtml || `<p class="text-muted">${t('No activities recorded')}</p>`}
                 </div>
             `;
         }

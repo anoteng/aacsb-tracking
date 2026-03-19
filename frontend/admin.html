@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin - AACSB Accreditation</title>
     <link rel="stylesheet" href="/aacsb/static/css/style.css">
+    <script src="/aacsb/static/js/i18n.js"></script>
     <style>
         .admin-container {
             max-width: 1400px;
@@ -259,11 +260,11 @@
     <!-- Impersonation Banner (hidden by default) -->
     <div id="impersonation-banner" class="impersonation-banner" style="display: none;">
         <div class="banner-text">
-            <strong>Viewing as:</strong>
+            <strong data-i18n="Viewing as:">Viewing as:</strong>
             <span id="impersonating-name"></span>
             <span style="opacity: 0.7;">(<span id="impersonating-email"></span>)</span>
         </div>
-        <button class="btn-stop" onclick="stopImpersonation()">Stop Viewing As</button>
+        <button class="btn-stop" onclick="stopImpersonation()" data-i18n="Stop Viewing As">Stop Viewing As</button>
     </div>
 
     <nav class="nav">
@@ -271,29 +272,33 @@
             <a href="/aacsb/aol" class="nav-brand">AACSB Accreditation</a>
             <ul class="nav-links">
                 <li><a href="/aacsb/aol">AOL</a></li>
-                <li><a href="/aacsb/research">Research</a></li>
-                <li><a href="/aacsb/qualifications">Qualifications</a></li>
-                <li><a href="/aacsb/admin" class="active">Admin</a></li>
+                <li><a href="/aacsb/research" data-i18n="Research">Research</a></li>
+                <li><a href="/aacsb/qualifications" data-i18n="Qualifications">Qualifications</a></li>
+                <li><a href="/aacsb/admin" class="active" data-i18n="Admin">Admin</a></li>
             </ul>
             <div class="nav-user" id="nav-user">
                 <span>Loading...</span>
             </div>
+            <select id="lang-switcher" onchange="i18n.setLang(this.value)" style="margin-left:0.5rem; padding:0.25rem 0.5rem; border:1px solid rgba(255,255,255,0.3); border-radius:4px; font-size:0.875rem; background:#1e40af; color:white;">
+                <option value="en">EN</option>
+                <option value="no">NO</option>
+            </select>
         </div>
     </nav>
 
     <header class="page-header">
         <div class="container">
-            <h1 class="page-title">User Administration</h1>
-            <p class="page-subtitle">Manage users and access roles</p>
+            <h1 class="page-title" data-i18n="User Administration">User Administration</h1>
+            <p class="page-subtitle" data-i18n="Manage users and access roles">Manage users and access roles</p>
         </div>
     </header>
 
     <main class="admin-container">
         <div class="header-actions">
             <div class="search-box">
-                <input type="text" id="search-input" placeholder="Search users by name or email...">
+                <input type="text" id="search-input" placeholder="Search users by name or email..." data-i18n-placeholder="Search users by name or email...">
             </div>
-            <button class="btn btn-primary" onclick="showAddUserModal()">Add User</button>
+            <button class="btn btn-primary" onclick="showAddUserModal()" data-i18n="Add User">Add User</button>
         </div>
 
         <div id="users-table-container">
@@ -314,6 +319,8 @@
 
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
+            await i18n.init();
+            const { t } = i18n;
             await checkAuth();
             await loadData();
             renderUsers();
@@ -324,6 +331,7 @@
         });
 
         async function checkAuth() {
+            const { t } = i18n;
             try {
                 const response = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' });
                 if (!response.ok) {
@@ -338,15 +346,15 @@
                 // Check if user is system_admin (real user must be admin, not impersonated user)
                 // The backend handles this - if we can access admin endpoints, we're authorized
                 if (!currentUser.roles.includes('system_admin') && !currentUser.impersonation?.active) {
-                    alert('Access denied. System admin role required.');
+                    alert(t('Access denied. System admin role required.'));
                     window.location.href = '/aacsb/aol';
                     return;
                 }
 
                 document.getElementById('nav-user').innerHTML = `
                     <span>${currentUser.firstname} ${currentUser.lastname}</span>
-                    <a href="/aacsb/aol/settings" class="btn btn-sm btn-outline" style="color: white; border-color: rgba(255,255,255,0.3);">Settings</a>
-                    <button onclick="logout()" class="btn btn-sm btn-outline" style="color: white; border-color: rgba(255,255,255,0.3);">Logout</button>
+                    <a href="/aacsb/aol/settings" class="btn btn-sm btn-outline" style="color: white; border-color: rgba(255,255,255,0.3);">${t('Settings')}</a>
+                    <button onclick="logout()" class="btn btn-sm btn-outline" style="color: white; border-color: rgba(255,255,255,0.3);">${t('Logout')}</button>
                 `;
             } catch (error) {
                 window.location.href = '/aacsb/login';
@@ -404,6 +412,7 @@
         }
 
         async function loadData() {
+            const { t } = i18n;
             try {
                 const [usersRes, rolesRes, programmesRes, degreesRes, disciplinesRes, responsibilitiesRes] = await Promise.all([
                     fetch(`${API_BASE}/admin/users`, { credentials: 'include' }),
@@ -428,12 +437,13 @@
             } catch (error) {
                 console.error('loadData error:', error);
                 document.getElementById('users-table-container').innerHTML = `
-                    <div class="alert alert-error">Failed to load data: ${error.message}</div>
+                    <div class="alert alert-error">${t('Failed to load data: ')}${error.message}</div>
                 `;
             }
         }
 
         function renderUsers(searchTerm = '') {
+            const { t } = i18n;
             let filtered = users.filter(u => {
                 if (!searchTerm) return true;
                 const term = searchTerm.toLowerCase();
@@ -454,13 +464,13 @@
                 <table class="user-table">
                     <thead>
                         <tr>
-                            <th class="${getSortClass('name')}" onclick="handleUserSort('name')">Name</th>
-                            <th class="${getSortClass('email')}" onclick="handleUserSort('email')">Email</th>
-                            <th class="${getSortClass('category')}" onclick="handleUserSort('category')">Category</th>
-                            <th>Disciplines</th>
-                            <th class="${getSortClass('status')}" onclick="handleUserSort('status')">Status</th>
-                            <th class="${getSortClass('roles')}" onclick="handleUserSort('roles')">Global Roles</th>
-                            <th>Actions</th>
+                            <th class="${getSortClass('name')}" onclick="handleUserSort('name')">${t('Name')}</th>
+                            <th class="${getSortClass('email')}" onclick="handleUserSort('email')">${t('Email')}</th>
+                            <th class="${getSortClass('category')}" onclick="handleUserSort('category')">${t('Category')}</th>
+                            <th>${t('Disciplines')}</th>
+                            <th class="${getSortClass('status')}" onclick="handleUserSort('status')">${t('Status')}</th>
+                            <th class="${getSortClass('roles')}" onclick="handleUserSort('roles')">${t('Global Roles')}</th>
+                            <th>${t('Actions')}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -469,28 +479,28 @@
                                 <td><strong>${u.firstname} ${u.lastname}</strong></td>
                                 <td>${u.email}</td>
                                 <td>
-                                    ${u.faculty_category ? `<span class="badge badge-role">${u.faculty_category}</span>` : '<span class="text-muted">-</span>'}
-                                    ${u.is_participating === false ? '<span class="badge badge-inactive" title="Not participating">NP</span>' : ''}
-                                    ${u.employment_percentage && u.employment_percentage < 100 ? `<span class="badge" style="background: #f0f9ff; color: #0369a1;" title="Employment percentage">${u.employment_percentage}%</span>` : ''}
+                                    ${u.faculty_category ? `<span class="badge badge-role">${u.faculty_category}</span>` : `<span class="text-muted">-</span>`}
+                                    ${u.is_participating === false ? `<span class="badge badge-inactive" title="${t('Not participating')}">NP</span>` : ''}
+                                    ${u.employment_percentage && u.employment_percentage < 100 ? `<span class="badge" style="background: #f0f9ff; color: #0369a1;" title="${t('Employment percentage')}">${u.employment_percentage}%</span>` : ''}
                                 </td>
                                 <td>
                                     ${u.disciplines && u.disciplines.length > 0
                                         ? u.disciplines.map(d => `<span class="badge badge-programme" title="${d.name}">${d.shorthand} ${d.percentage}%</span>`).join('')
-                                        : '<span class="text-muted">-</span>'}
+                                        : `<span class="text-muted">-</span>`}
                                 </td>
                                 <td>
                                     <span class="badge ${u.active ? 'badge-active' : 'badge-inactive'}">
-                                        ${u.active ? 'Active' : 'Inactive'}
+                                        ${u.active ? t('Active') : t('Inactive')}
                                     </span>
                                 </td>
                                 <td>
                                     ${u.roles.map(r => `<span class="badge badge-role">${r.name}</span>`).join('')}
-                                    ${u.roles.length === 0 ? '<span class="text-muted">None</span>' : ''}
+                                    ${u.roles.length === 0 ? `<span class="text-muted">${t('None')}</span>` : ''}
                                 </td>
                                 <td class="actions-cell">
-                                    <button class="btn btn-sm btn-outline btn-edit" data-user-id="${u.id}">Edit</button>
-                                    <button class="btn btn-sm btn-outline btn-roles" data-user-id="${u.id}">Roles</button>
-                                    <button class="btn-view-as" data-user-id="${u.id}" title="View system as this user">View as</button>
+                                    <button class="btn btn-sm btn-outline btn-edit" data-user-id="${u.id}">${t('Edit')}</button>
+                                    <button class="btn btn-sm btn-outline btn-roles" data-user-id="${u.id}">${t('Roles')}</button>
+                                    <button class="btn-view-as" data-user-id="${u.id}" title="${t('View system as this user')}">${t('View as')}</button>
                                 </td>
                             </tr>
                         `).join('')}
@@ -573,33 +583,34 @@
         }
 
         function showAddUserModal() {
+            const { t } = i18n;
             const modal = document.createElement('div');
             modal.className = 'modal-overlay active';
             modal.innerHTML = `
                 <div class="modal">
                     <div class="modal-header">
-                        <h2>Add New User</h2>
+                        <h2>${t('Add New User')}</h2>
                         <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
                     </div>
                     <div class="modal-body">
                         <div class="form-row">
                             <div class="form-group">
-                                <label class="form-label">First Name</label>
+                                <label class="form-label">${t('First Name')}</label>
                                 <input type="text" id="new-firstname" class="form-input" required>
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Last Name</label>
+                                <label class="form-label">${t('Last Name')}</label>
                                 <input type="text" id="new-lastname" class="form-input" required>
                             </div>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Email</label>
+                            <label class="form-label">${t('Email')}</label>
                             <input type="email" id="new-email" class="form-input" required>
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
-                        <button class="btn btn-primary" onclick="createUser()">Create User</button>
+                        <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">${t('Cancel')}</button>
+                        <button class="btn btn-primary" onclick="createUser()">${t('Create User')}</button>
                     </div>
                 </div>
             `;
@@ -607,12 +618,13 @@
         }
 
         async function createUser() {
+            const { t } = i18n;
             const firstname = document.getElementById('new-firstname').value;
             const lastname = document.getElementById('new-lastname').value;
             const email = document.getElementById('new-email').value;
 
             if (!firstname || !lastname || !email) {
-                alert('Please fill in all fields');
+                alert(t('Please fill in all fields'));
                 return;
             }
 
@@ -639,6 +651,7 @@
         }
 
         function showEditUserModal(userId) {
+            const { t } = i18n;
             const user = users.find(u => u.id === userId);
             if (!user) return;
 
@@ -652,61 +665,61 @@
             modal.innerHTML = `
                 <div class="modal" style="max-width: 800px;">
                     <div class="modal-header">
-                        <h2>Edit User - ${escapeHtml(user.firstname)} ${escapeHtml(user.lastname)}</h2>
+                        <h2>${t('Edit User')} - ${escapeHtml(user.firstname)} ${escapeHtml(user.lastname)}</h2>
                         <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
                     </div>
                     <div class="modal-body">
                         <!-- Basic Info -->
-                        <h3 style="margin-top: 0;">Basic Information</h3>
+                        <h3 style="margin-top: 0;">${t('Basic Information')}</h3>
                         <div class="form-row">
                             <div class="form-group">
-                                <label class="form-label">First Name</label>
+                                <label class="form-label">${t('First Name')}</label>
                                 <input type="text" id="edit-firstname" class="form-input" value="${escapeHtml(user.firstname)}" required>
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Last Name</label>
+                                <label class="form-label">${t('Last Name')}</label>
                                 <input type="text" id="edit-lastname" class="form-input" value="${escapeHtml(user.lastname)}" required>
                             </div>
                         </div>
                         <div class="form-row">
                             <div class="form-group">
-                                <label class="form-label">Email</label>
+                                <label class="form-label">${t('Email')}</label>
                                 <input type="email" id="edit-email" class="form-input" value="${escapeHtml(user.email)}" required>
                             </div>
                             <div class="form-group">
                                 <label class="form-label" style="display: block; margin-top: 1.5rem;">
                                     <input type="checkbox" id="edit-active" ${user.active ? 'checked' : ''}>
-                                    Active Account
+                                    ${t('Active Account')}
                                 </label>
                             </div>
                         </div>
 
                         <!-- Researcher ID with Search -->
-                        <h3>Researcher Identity</h3>
+                        <h3>${t('Researcher Identity')}</h3>
                         <div class="form-group">
-                            <label class="form-label">Researcher ID (Cristin)</label>
+                            <label class="form-label">${t('Researcher ID (Cristin)')}</label>
                             <div style="display: flex; gap: 0.5rem;">
                                 <input type="text" id="edit-researcher-id" class="form-input" value="${escapeHtml(user.researcher_id || '')}" placeholder="e.g., 12345" style="flex: 1;">
-                                <button type="button" class="btn btn-outline" onclick="showResearcherSearch(${userId})">Search</button>
+                                <button type="button" class="btn btn-outline" onclick="showResearcherSearch(${userId})">${t('Search')}</button>
                             </div>
                         </div>
 
                         <!-- Faculty Qualification -->
-                        <h3>Faculty Qualification</h3>
+                        <h3>${t('Faculty Qualification')}</h3>
                         <div class="form-row">
                             <div class="form-group">
-                                <label class="form-label">Faculty Category</label>
+                                <label class="form-label">${t('Faculty Category')}</label>
                                 <select id="edit-faculty-category" class="form-input">
-                                    <option value="">-- Not Set --</option>
+                                    <option value="">${t('-- Not Set --')}</option>
                                     <option value="SA" ${user.faculty_category === 'SA' ? 'selected' : ''}>SA - Scholarly Academic</option>
                                     <option value="PA" ${user.faculty_category === 'PA' ? 'selected' : ''}>PA - Practice Academic</option>
                                     <option value="SP" ${user.faculty_category === 'SP' ? 'selected' : ''}>SP - Scholarly Practitioner</option>
                                     <option value="IP" ${user.faculty_category === 'IP' ? 'selected' : ''}>IP - Instructional Practitioner</option>
-                                    <option value="Other" ${user.faculty_category === 'Other' ? 'selected' : ''}>Other</option>
+                                    <option value="Other" ${user.faculty_category === 'Other' ? 'selected' : ''}>${t('Other')}</option>
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Employment %</label>
+                                <label class="form-label">${t('Employment %')}</label>
                                 <input type="number" id="edit-employment-pct" class="form-input" value="${user.employment_percentage || 100}" min="0" max="100" step="0.01" placeholder="100">
                             </div>
                         </div>
@@ -714,40 +727,40 @@
                             <div class="form-group">
                                 <label class="form-label" style="display: block; margin-top: 0.5rem;">
                                     <input type="checkbox" id="edit-participating" ${user.is_participating !== false ? 'checked' : ''}>
-                                    Participating Faculty
+                                    ${t('Participating Faculty')}
                                 </label>
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Participating Note</label>
-                                <input type="text" id="edit-participating-note" class="form-input" value="${escapeHtml(user.participating_note || '')}" placeholder="Optional explanation...">
+                                <label class="form-label">${t('Participating Note')}</label>
+                                <input type="text" id="edit-participating-note" class="form-input" value="${escapeHtml(user.participating_note || '')}" placeholder="${t('Optional explanation...')}">
                             </div>
                         </div>
 
                         <!-- Degree -->
                         <div class="form-row">
                             <div class="form-group">
-                                <label class="form-label">Highest Degree</label>
+                                <label class="form-label">${t('Highest Degree')}</label>
                                 <select id="edit-degree" class="form-input">
-                                    <option value="">-- Not Set --</option>
+                                    <option value="">${t('-- Not Set --')}</option>
                                     ${degrees.map(d => `<option value="${d.id}" ${user.highest_degree && user.highest_degree.id === d.id ? 'selected' : ''}>${d.name}</option>`).join('')}
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Year Earned</label>
-                                <input type="number" id="edit-degree-year" class="form-input" value="${user.degree_year || ''}" placeholder="e.g., 2015" min="1950" max="2030">
+                                <label class="form-label">${t('Year Earned')}</label>
+                                <input type="number" id="edit-degree-year" class="form-input" value="${user.degree_year || ''}" placeholder="${t('e.g., 2015')}" min="1950" max="2030">
                             </div>
                         </div>
 
                         <!-- Disciplines -->
-                        <h3>Discipline Allocation</h3>
+                        <h3>${t('Discipline Allocation')}</h3>
                         <div id="discipline-allocations">
                             ${renderDisciplineAllocations(user)}
                         </div>
-                        <button type="button" class="btn btn-sm btn-outline" onclick="addDisciplineRow(${userId})" style="margin-top: 0.5rem;">+ Add Discipline</button>
-                        <p class="text-muted" style="font-size: 0.8rem; margin-top: 0.25rem;">Percentages must sum to 100%</p>
+                        <button type="button" class="btn btn-sm btn-outline" onclick="addDisciplineRow(${userId})" style="margin-top: 0.5rem;">+ ${t('Add Discipline')}</button>
+                        <p class="text-muted" style="font-size: 0.8rem; margin-top: 0.25rem;">${t('Percentages must sum to 100%')}</p>
 
                         <!-- Responsibilities -->
-                        <h3>Professional Responsibilities</h3>
+                        <h3>${t('Professional Responsibilities')}</h3>
                         <div id="user-responsibilities" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.5rem;">
                             ${responsibilities.map(r => `
                                 <label style="display: flex; align-items: center; gap: 0.25rem; background: #f1f5f9; padding: 0.25rem 0.5rem; border-radius: 4px;">
@@ -755,28 +768,28 @@
                                     <span title="${r.name}">${r.shorthand}</span>
                                 </label>
                             `).join('')}
-                            ${responsibilities.length === 0 ? '<span class="text-muted">No responsibilities configured</span>' : ''}
+                            ${responsibilities.length === 0 ? `<span class="text-muted">${t('No responsibilities configured')}</span>` : ''}
                         </div>
                         <div id="add-responsibility-form" style="display: none; margin-bottom: 0.5rem;">
                             <div class="form-row" style="gap: 0.5rem;">
-                                <input type="text" id="new-resp-shorthand" class="form-input" placeholder="Code (e.g., MT)" style="width: 80px;">
-                                <input type="text" id="new-resp-name" class="form-input" placeholder="Full name (e.g., Management Teaching)" style="flex: 1;">
-                                <button type="button" class="btn btn-sm btn-primary" onclick="createResponsibility()">Add</button>
-                                <button type="button" class="btn btn-sm btn-outline" onclick="toggleAddResponsibility(false)">Cancel</button>
+                                <input type="text" id="new-resp-shorthand" class="form-input" placeholder="${t('Code (e.g., MT)')}" style="width: 80px;">
+                                <input type="text" id="new-resp-name" class="form-input" placeholder="${t('Full name (e.g., Management Teaching)')}" style="flex: 1;">
+                                <button type="button" class="btn btn-sm btn-primary" onclick="createResponsibility()">${t('Add')}</button>
+                                <button type="button" class="btn btn-sm btn-outline" onclick="toggleAddResponsibility(false)">${t('Cancel')}</button>
                             </div>
                         </div>
-                        <button type="button" class="btn btn-sm btn-outline" id="btn-add-resp" onclick="toggleAddResponsibility(true)">+ Add New Responsibility Type</button>
+                        <button type="button" class="btn btn-sm btn-outline" id="btn-add-resp" onclick="toggleAddResponsibility(true)">+ ${t('Add New Responsibility Type')}</button>
 
                         <!-- Teaching Productivity -->
-                        <h3>Teaching Productivity (ECTS Credits)</h3>
+                        <h3>${t('Teaching Productivity (ECTS Credits)')}</h3>
                         <div id="teaching-productivity">
                             ${renderTeachingProductivity(user)}
                         </div>
-                        <button type="button" class="btn btn-sm btn-outline" onclick="addTeachingRow(${userId})" style="margin-top: 0.5rem;">+ Add Year</button>
+                        <button type="button" class="btn btn-sm btn-outline" onclick="addTeachingRow(${userId})" style="margin-top: 0.5rem;">+ ${t('Add Year')}</button>
                     </div>
                     <div class="modal-footer">
-                        <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
-                        <button class="btn btn-primary" id="save-edit-btn">Save All Changes</button>
+                        <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">${t('Cancel')}</button>
+                        <button class="btn btn-primary" id="save-edit-btn">${t('Save All Changes')}</button>
                     </div>
                 </div>
             `;
@@ -785,9 +798,10 @@
         }
 
         function renderDisciplineAllocations(user) {
+            const { t } = i18n;
             const allocs = user.disciplines || [];
             if (allocs.length === 0) {
-                return '<div class="text-muted">No disciplines assigned</div>';
+                return `<div class="text-muted">${t('No disciplines assigned')}</div>`;
             }
             return allocs.map((d, idx) => `
                 <div class="form-row discipline-row" style="margin-bottom: 0.5rem;">
@@ -801,6 +815,7 @@
         }
 
         function addDisciplineRow(userId) {
+            const { t } = i18n;
             const container = document.getElementById('discipline-allocations');
             if (container.querySelector('.text-muted')) {
                 container.innerHTML = '';
@@ -810,7 +825,7 @@
             row.style.marginBottom = '0.5rem';
             row.innerHTML = `
                 <select class="form-input disc-select" style="flex: 2;">
-                    <option value="">-- Select --</option>
+                    <option value="">${t('-- Select --')}</option>
                     ${disciplines.map(d => `<option value="${d.id}">${d.shorthand} - ${d.name}</option>`).join('')}
                 </select>
                 <input type="number" class="form-input disc-pct" value="" min="0" max="100" step="0.01" style="flex: 1;" placeholder="%">
@@ -820,20 +835,22 @@
         }
 
         function renderTeachingProductivity(user) {
+            const { t } = i18n;
             const entries = user.teaching_productivity || [];
             if (entries.length === 0) {
-                return '<div class="text-muted">No teaching productivity entries</div>';
+                return `<div class="text-muted">${t('No teaching productivity entries')}</div>`;
             }
             return entries.map(e => `
                 <div class="form-row teaching-row" style="margin-bottom: 0.5rem;">
-                    <input type="text" class="form-input tp-year" value="${e.academic_year}" placeholder="e.g., 2024-2025" style="flex: 1;">
-                    <input type="number" class="form-input tp-credits" value="${e.credits}" min="0" step="0.01" style="flex: 1;" placeholder="Credits">
+                    <input type="text" class="form-input tp-year" value="${e.academic_year}" placeholder="${t('e.g., 2024-2025')}" style="flex: 1;">
+                    <input type="number" class="form-input tp-credits" value="${e.credits}" min="0" step="0.01" style="flex: 1;" placeholder="${t('Credits')}">
                     <button type="button" class="btn btn-sm btn-outline" onclick="this.closest('.teaching-row').remove()" style="color: #ef4444;">&times;</button>
                 </div>
             `).join('');
         }
 
         function addTeachingRow(userId) {
+            const { t } = i18n;
             const container = document.getElementById('teaching-productivity');
             if (container.querySelector('.text-muted')) {
                 container.innerHTML = '';
@@ -843,14 +860,15 @@
             row.className = 'form-row teaching-row';
             row.style.marginBottom = '0.5rem';
             row.innerHTML = `
-                <input type="text" class="form-input tp-year" value="${currentYear-1}-${currentYear}" placeholder="e.g., 2024-2025" style="flex: 1;">
-                <input type="number" class="form-input tp-credits" value="" min="0" step="0.01" style="flex: 1;" placeholder="Credits">
+                <input type="text" class="form-input tp-year" value="${currentYear-1}-${currentYear}" placeholder="${t('e.g., 2024-2025')}" style="flex: 1;">
+                <input type="number" class="form-input tp-credits" value="" min="0" step="0.01" style="flex: 1;" placeholder="${t('Credits')}">
                 <button type="button" class="btn btn-sm btn-outline" onclick="this.closest('.teaching-row').remove()" style="color: #ef4444;">&times;</button>
             `;
             container.appendChild(row);
         }
 
         async function showResearcherSearch(userId) {
+            const { t } = i18n;
             const user = users.find(u => u.id === userId);
             const userName = user ? `${user.firstname} ${user.lastname}` : '';
 
@@ -860,15 +878,15 @@
             searchModal.innerHTML = `
                 <div class="modal" style="max-width: 600px;">
                     <div class="modal-header">
-                        <h2>Search Researcher</h2>
+                        <h2>${t('Search Researcher')}</h2>
                         <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
                     </div>
                     <div class="modal-body">
                         <div class="form-group">
-                            <label class="form-label">Search by name</label>
+                            <label class="form-label">${t('Search by name')}</label>
                             <div style="display: flex; gap: 0.5rem;">
                                 <input type="text" id="researcher-search-input" class="form-input" value="${userName}" style="flex: 1;">
-                                <button class="btn btn-primary" onclick="doResearcherSearch()">Search</button>
+                                <button class="btn btn-primary" onclick="doResearcherSearch()">${t('Search')}</button>
                             </div>
                         </div>
                         <div id="researcher-search-results" style="margin-top: 1rem;"></div>
@@ -887,9 +905,10 @@
         }
 
         async function doResearcherSearch() {
+            const { t } = i18n;
             const query = document.getElementById('researcher-search-input').value;
             if (query.length < 2) {
-                alert('Please enter at least 2 characters');
+                alert(t('Please enter at least 2 characters'));
                 return;
             }
             const resultsDiv = document.getElementById('researcher-search-results');
@@ -901,20 +920,20 @@
                 const results = await response.json();
 
                 if (results.length === 0) {
-                    resultsDiv.innerHTML = '<p class="text-muted">No researchers found</p>';
+                    resultsDiv.innerHTML = `<p class="text-muted">${t('No researchers found')}</p>`;
                     return;
                 }
 
                 resultsDiv.innerHTML = `
                     <table class="user-table" style="font-size: 0.9rem;">
-                        <thead><tr><th>Name</th><th>ID</th><th>Affiliation</th><th></th></tr></thead>
+                        <thead><tr><th>${t('Name')}</th><th>${t('ID')}</th><th>${t('Affiliation')}</th><th></th></tr></thead>
                         <tbody>
                             ${results.map(r => `
                                 <tr>
                                     <td>${r.full_name}</td>
                                     <td>${r.id}</td>
                                     <td>${r.affiliations.slice(0, 2).join(', ') || '-'}</td>
-                                    <td><button class="btn btn-sm btn-primary" onclick="selectResearcher('${r.id}')">Select</button></td>
+                                    <td><button class="btn btn-sm btn-primary" onclick="selectResearcher('${r.id}')">${t('Select')}</button></td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -931,6 +950,7 @@
         }
 
         async function saveAllUserChanges(userId) {
+            const { t } = i18n;
             try {
                 // Collect basic user data
                 const userData = {
@@ -974,7 +994,7 @@
                 if (allocations.length > 0) {
                     const total = allocations.reduce((sum, a) => sum + a.percentage, 0);
                     if (Math.abs(total - 100) > 0.1) {
-                        throw new Error(`Discipline percentages must sum to 100% (currently ${total}%)`);
+                        throw new Error(`${t('Discipline percentages must sum to 100%')} (${t('currently')} ${total}%)`);
                     }
                 }
 
@@ -1056,6 +1076,7 @@
         }
 
         function showRolesModal(userId) {
+            const { t } = i18n;
             console.log('showRolesModal called with userId:', userId);
             const user = users.find(u => u.id === userId);
             console.log('Found user for roles:', user);
@@ -1072,13 +1093,13 @@
             modal.innerHTML = `
                 <div class="modal">
                     <div class="modal-header">
-                        <h2>Manage Roles - ${user.firstname} ${user.lastname}</h2>
+                        <h2>${t('Manage Roles')} - ${user.firstname} ${user.lastname}</h2>
                         <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
                     </div>
                     <div class="modal-body">
                         <div class="role-section">
-                            <h3>Global Roles</h3>
-                            <p class="text-muted">Global roles apply system-wide</p>
+                            <h3>${t('Global Roles')}</h3>
+                            <p class="text-muted">${t('Global roles apply system-wide')}</p>
                             <div class="role-list" id="global-roles-list">
                                 ${user.roles.map(r => `
                                     <div class="role-item">
@@ -1086,22 +1107,22 @@
                                         <button class="remove-btn" onclick="removeGlobalRole(${userId}, ${r.id})">&times;</button>
                                     </div>
                                 `).join('')}
-                                ${user.roles.length === 0 ? '<span class="text-muted">No global roles assigned</span>' : ''}
+                                ${user.roles.length === 0 ? `<span class="text-muted">${t('No global roles assigned')}</span>` : ''}
                             </div>
                             <div class="add-role-form">
                                 <select id="add-global-role">
-                                    <option value="">Select a role...</option>
+                                    <option value="">${t('Select a role...')}</option>
                                     ${roles.filter(r => !user.roles.find(ur => ur.id === r.id)).map(r => `
                                         <option value="${r.id}">${r.name}</option>
                                     `).join('')}
                                 </select>
-                                <button class="btn btn-sm btn-primary" onclick="addGlobalRole(${userId})">Add</button>
+                                <button class="btn btn-sm btn-primary" onclick="addGlobalRole(${userId})">${t('Add')}</button>
                             </div>
                         </div>
 
                         <div class="role-section">
-                            <h3>Programme Roles</h3>
-                            <p class="text-muted">Programme-specific roles</p>
+                            <h3>${t('Programme Roles')}</h3>
+                            <p class="text-muted">${t('Programme-specific roles')}</p>
                             <div class="role-list" id="programme-roles-list">
                                 ${user.programme_roles.map(pr => `
                                     <div class="role-item">
@@ -1109,27 +1130,27 @@
                                         <button class="remove-btn" onclick="removeProgrammeRole(${userId}, ${pr.id})">&times;</button>
                                     </div>
                                 `).join('')}
-                                ${user.programme_roles.length === 0 ? '<span class="text-muted">No programme roles assigned</span>' : ''}
+                                ${user.programme_roles.length === 0 ? `<span class="text-muted">${t('No programme roles assigned')}</span>` : ''}
                             </div>
                             <div class="add-role-form">
                                 <select id="add-programme">
-                                    <option value="">Select programme...</option>
+                                    <option value="">${t('Select programme...')}</option>
                                     ${programmes.map(p => `
                                         <option value="${p.id}">${p.programme_code} - ${p.name_eng || p.name_no}</option>
                                     `).join('')}
                                 </select>
                                 <select id="add-programme-role">
-                                    <option value="">Select role...</option>
+                                    <option value="">${t('Select role...')}</option>
                                     ${roles.map(r => `
                                         <option value="${r.id}">${r.name}</option>
                                     `).join('')}
                                 </select>
-                                <button class="btn btn-sm btn-primary" onclick="addProgrammeRole(${userId})">Add</button>
+                                <button class="btn btn-sm btn-primary" onclick="addProgrammeRole(${userId})">${t('Add')}</button>
                             </div>
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Close</button>
+                        <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">${t('Close')}</button>
                     </div>
                 </div>
             `;
@@ -1142,9 +1163,10 @@
         }
 
         async function addGlobalRole(userId) {
+            const { t } = i18n;
             const roleId = document.getElementById('add-global-role').value;
             if (!roleId) {
-                alert('Please select a role');
+                alert(t('Please select a role'));
                 return;
             }
 
@@ -1171,7 +1193,8 @@
         }
 
         async function removeGlobalRole(userId, roleId) {
-            if (!confirm('Remove this role?')) return;
+            const { t } = i18n;
+            if (!confirm(t('Remove this role?'))) return;
 
             try {
                 const response = await fetch(`${API_BASE}/admin/users/${userId}/roles/${roleId}`, {
@@ -1193,11 +1216,12 @@
         }
 
         async function addProgrammeRole(userId) {
+            const { t } = i18n;
             const programmeId = document.getElementById('add-programme').value;
             const roleId = document.getElementById('add-programme-role').value;
 
             if (!programmeId || !roleId) {
-                alert('Please select both programme and role');
+                alert(t('Please select both programme and role'));
                 return;
             }
 
@@ -1226,7 +1250,8 @@
         }
 
         async function removeProgrammeRole(userId, programmeRoleId) {
-            if (!confirm('Remove this programme role?')) return;
+            const { t } = i18n;
+            if (!confirm(t('Remove this programme role?'))) return;
 
             try {
                 const response = await fetch(`${API_BASE}/admin/users/${userId}/programme-roles/${programmeRoleId}`, {
@@ -1283,11 +1308,12 @@
         }
 
         async function createResponsibility() {
+            const { t } = i18n;
             const shorthand = document.getElementById('new-resp-shorthand').value.trim();
             const name = document.getElementById('new-resp-name').value.trim();
 
             if (!shorthand || !name) {
-                alert('Please enter both code and name');
+                alert(t('Please enter both code and name'));
                 return;
             }
 

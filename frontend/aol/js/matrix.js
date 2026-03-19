@@ -138,12 +138,20 @@ class MatrixComponent {
 
     buildCategoryHeaders() {
         // Group goals by category to build colspan headers
+        const catById = Object.fromEntries((this.data.categories || []).map(c => [c.id, c]));
+        const isNo = i18n.getLang() === 'no';
+        const getCatName = goal => {
+            const cat = catById[goal.category_id];
+            if (cat) return isNo ? (cat.name_no || cat.name_eng) : (cat.name_eng || cat.name_no);
+            return goal.category_name || i18n.t('Uncategorized');
+        };
+
         const categorySpans = [];
         let currentCategory = null;
         let currentSpan = 0;
 
         this.data.goals.forEach((goal, idx) => {
-            const catName = goal.category_name || 'Uncategorized';
+            const catName = getCatName(goal);
             if (catName !== currentCategory) {
                 if (currentCategory !== null) {
                     categorySpans.push({ name: currentCategory, span: currentSpan });
@@ -184,6 +192,7 @@ class MatrixComponent {
     }
 
     getSemesterLabel(sem) {
+        if (i18n.getLang() === 'no') return `${sem}. semester`;
         const suffixes = { 1: 'st', 2: 'nd', 3: 'rd' };
         const suffix = suffixes[sem] || 'th';
         return `${sem}${suffix} semester`;
@@ -209,7 +218,7 @@ class MatrixComponent {
         const isAdmin = app.isAdmin();
         return `
             <tr>
-                <td class="course-cell" title="${course.name_eng || course.name_no}">
+                <td class="course-cell" title="${i18n.getLang() === 'no' ? (course.name_no || course.name_eng) : (course.name_eng || course.name_no)}">
                     ${course.course_code}
                 </td>
                 <td class="meta-cell ${isAdmin ? 'meta-cell-edit' : ''}" data-course="${course.id}" data-type="learning">
@@ -360,8 +369,8 @@ class MatrixComponent {
                 </div>
                 <div class="modal-body">
                     <p class="mb-2">
-                        <strong>Goal:</strong> ${goal.goal_eng || goal.goal_no}<br>
-                        <strong>Course:</strong> ${course.course_code} - ${course.name_eng || course.name_no}
+                        <strong>Goal:</strong> ${i18n.getLang() === 'no' ? (goal.goal_no || goal.goal_eng) : (goal.goal_eng || goal.goal_no)}<br>
+                        <strong>Course:</strong> ${course.course_code} - ${i18n.getLang() === 'no' ? (course.name_no || course.name_eng) : (course.name_eng || course.name_no)}
                     </p>
                     <div class="form-group">
                         <label class="form-label">Learning Level</label>
@@ -418,7 +427,7 @@ class MatrixComponent {
                 </div>
                 <div class="modal-body">
                     <p class="mb-2">
-                        <strong>Course:</strong> ${course.course_code} - ${course.name_eng || course.name_no}
+                        <strong>Course:</strong> ${course.course_code} - ${i18n.getLang() === 'no' ? (course.name_no || course.name_eng) : (course.name_eng || course.name_no)}
                     </p>
 
                     <div class="form-group">

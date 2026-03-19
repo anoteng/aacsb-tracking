@@ -19,7 +19,7 @@
             <div class="nav-user" id="nav-user">
                 <span>Loading...</span>
             </div>
-            <select id="lang-switcher" onchange="i18n.setLang(this.value)" style="margin-left:0.5rem; padding:0.25rem 0.5rem; border:1px solid rgba(255,255,255,0.3); border-radius:4px; font-size:0.875rem; background:transparent; color:white;">
+            <select id="lang-switcher" onchange="i18n.setLang(this.value)" style="margin-left:0.5rem; padding:0.25rem 0.5rem; border:1px solid rgba(255,255,255,0.3); border-radius:4px; font-size:0.875rem; background:#1e40af; color:white;">
                 <option value="en">EN</option>
                 <option value="no">NO</option>
             </select>
@@ -95,6 +95,7 @@
     <script src="/aacsb/static/aol/js/rubric.js"></script>
     <script>
         const { t } = i18n;
+        const locName = obj => i18n.getLang() === 'no' ? (obj.name_no || obj.name_eng) : (obj.name_eng || obj.name_no);
 
         // Get programme ID from URL
         const programmeId = parseInt(window.location.pathname.split('/').pop());
@@ -116,7 +117,7 @@
 
                 // Load programme
                 programme = await api.getProgramme(programmeId);
-                document.getElementById('programme-name').textContent = programme.name_eng || programme.name_no;
+                document.getElementById('programme-name').textContent = locName(programme);
                 document.getElementById('programme-code').textContent = programme.programme_code;
                 document.title = `${programme.programme_code} - AOL - AACSB`;
 
@@ -245,7 +246,7 @@
                 .filter(g => g.goals.length > 0)
                 .map(g => `
                     <div class="card">
-                        <h3 class="mb-1">${g.category.name_eng || g.category.name_no}</h3>
+                        <h3 class="mb-1">${locName(g.category)}</h3>
                         <div class="table-container">
                             <table>
                                 <thead>
@@ -347,7 +348,7 @@
                             ${courses.map(course => `
                                 <tr>
                                     <td><strong>${course.course_code}</strong></td>
-                                    <td>${course.name_eng || course.name_no || '-'}</td>
+                                    <td>${locName(course) || '-'}</td>
                                     <td>${course.ects}</td>
                                 </tr>
                             `).join('')}
@@ -370,7 +371,7 @@
                         <div class="form-group">
                             <label class="form-label">${t('Category')}</label>
                             <select id="goal-category" class="form-select" required>
-                                ${categories.map(c => `<option value="${c.id}">${c.name_eng || c.name_no}</option>`).join('')}
+                                ${categories.map(c => `<option value="${c.id}">${locName(c)}</option>`).join('')}
                             </select>
                         </div>
                         <div class="form-group">
@@ -442,7 +443,7 @@
                         <div class="form-group">
                             <label class="form-label">${t('Category')}</label>
                             <select id="goal-category" class="form-select" required>
-                                ${categories.map(c => `<option value="${c.id}" ${c.id === goal.category.id ? 'selected' : ''}>${c.name_eng || c.name_no}</option>`).join('')}
+                                ${categories.map(c => `<option value="${c.id}" ${c.id === goal.category.id ? 'selected' : ''}>${locName(c)}</option>`).join('')}
                             </select>
                         </div>
                         <div class="form-group">
@@ -549,7 +550,7 @@
                         const results = await api.searchCourses(query);
                         resultsContainer.innerHTML = results.map(course => `
                             <div class="card" style="padding: 0.75rem; cursor: pointer;" onclick="addCourseToProgramme(${course.id}, this)">
-                                <strong>${course.course_code}-${course.course_version}</strong> - ${course.name_eng || course.name_no || t('No name')}
+                                <strong>${course.course_code}-${course.course_version}</strong> - ${locName(course) || t('No name')}
                                 <span class="text-muted text-sm">(${course.ects} ECTS)</span>
                             </div>
                         `).join('');
