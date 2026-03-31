@@ -56,9 +56,18 @@
         <div id="tab-goals" class="tab-content">
             <div class="flex-between mb-2">
                 <h2 data-i18n="Learning Goals">Learning Goals</h2>
-                <button class="btn btn-primary hidden" id="add-goal-btn" onclick="showAddGoalModal()" data-i18n="+ Add Goal">
-                    + Add Goal
-                </button>
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                    <label id="history-toggle-label" class="hidden" style="font-size:0.875rem; display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+                        <input type="checkbox" id="show-history-cb" onchange="toggleHistory(this.checked)">
+                        <span data-i18n="Show history">Show history</span>
+                    </label>
+                    <select id="history-year-filter" class="hidden" onchange="renderGoals()" style="font-size:0.875rem; padding:0.2rem 0.4rem; border:1px solid #d1d5db; border-radius:4px;">
+                        <option value="all" data-i18n="All years">All years</option>
+                    </select>
+                    <button class="btn btn-primary hidden" id="add-goal-btn" onclick="showAddGoalModal()" data-i18n="+ Add Goal">
+                        + Add Goal
+                    </button>
+                </div>
             </div>
             <div id="goals-list">
                 <div class="loading"><div class="spinner"></div></div>
@@ -113,6 +122,7 @@
         let categories = [];
         let courses = [];
         let matrixComponent = null;
+        let showHistory = false;
 
         async function init() {
             try {
@@ -135,6 +145,7 @@
                 if (isAdmin()) {
                     document.getElementById('add-goal-btn').classList.remove('hidden');
                     document.getElementById('add-course-btn').classList.remove('hidden');
+                    document.getElementById('history-toggle-label').classList.remove('hidden');
                 }
 
                 // Load initial tab
@@ -182,13 +193,17 @@
         function isAdmin() {
             if (!user || !user.roles) return false;
             if (user.roles.includes('system_admin')) return true;
-            // Check programme-level admin_staff role for this specific programme
+            if (user.roles.includes('programme_leader')) return true;
             if (user.programme_roles) {
                 return user.programme_roles.some(
                     pr => pr.programme_id === programmeId && pr.role_name === 'admin_staff'
                 );
             }
             return false;
+        }
+
+        function isSystemAdmin() {
+            return user && user.roles && user.roles.includes('system_admin');
         }
 
         function canEditGoal(goal) {
@@ -226,77 +241,81 @@
         async function loadGoals() {
             const container = document.getElementById('goals-list');
             container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
-
             try {
-                goals = await api.getGoals(programmeId);
+                goals = await api.getGoals(programmeId, showHistory);
                 renderGoals();
             } catch (error) {
                 container.innerHTML = `<div class="alert alert-error">${error.message}</div>`;
             }
         }
 
+        async function toggleHistory(checked) {
+            showHistory = checked;
+            document.getElementById('history-year-filter').classList.toggle('hidden', !checked);
+            await loadGoals();
+            if (checked) populateYearFilter();
+        }
+
+        function populateYearFilter() {
+            const archivedGoals = goals.filter(g => g.archived && g.archived_at);
+            const years = [...new Set(archivedGoals.map(g => new Date(g.archived_at).getFullYear()))].sort((a, b) => b - a);
+            const sel = document.getElementById('history-year-filter');
+            sel.innerHTML = `<option value="all">${t('All years')}</option>` +
+                years.map(y => `<option value="${y}">${y}</option>`).join('');
+        }
+
         function renderGoals() {
             const container = document.getElementById('goals-list');
+            const activeGoals = goals.filter(g => !g.archived);
+            const archivedGoals = goals.filter(g => g.archived);
 
-            if (goals.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <h3>${t('No learning goals defined')}</h3>
-                        <p>${t('Add learning goals to define what students should achieve in this programme.')}</p>
-                    </div>
-                `;
+            if (activeGoals.length === 0 && archivedGoals.length === 0) {
+                container.innerHTML = `<div class="empty-state"><h3>${t('No learning goals defined')}</h3><p>${t('Add learning goals to define what students should achieve in this programme.')}</p></div>`;
                 return;
             }
 
-            // Group by category
+            // Group active goals by category
             const grouped = {};
-            categories.forEach(cat => {
-                grouped[cat.id] = { category: cat, goals: [] };
+            categories.forEach(cat => { grouped[cat.id] = { category: cat, goals: [] }; });
+            activeGoals.forEach(goal => {
+                if (grouped[goal.category.id]) grouped[goal.category.id].goals.push(goal);
             });
 
-            goals.forEach(goal => {
-                if (grouped[goal.category.id]) {
-                    grouped[goal.category.id].goals.push(goal);
-                }
-            });
-
-            container.innerHTML = Object.values(grouped)
+            const adminCols = isAdmin() ? `<th style="width:1%">${t('Order')}</th>` : '';
+            const activeHtml = Object.values(grouped)
                 .filter(g => g.goals.length > 0)
-                .map(g => `
+                .map(g => {
+                    const catGoals = g.goals;
+                    return `
                     <div class="card">
                         <h3 class="mb-1">${locName(g.category)}</h3>
                         <div class="table-container">
                             <table>
-                                <thead>
-                                    <tr>
-                                        <th style="width: 50%;">${t('Goal')}</th>
-                                        <th>${t('Measured')}</th>
-                                        <th>${t('Target')}</th>
-                                        <th>${t('Assigned Staff')}</th>
-                                        <th></th>
-                                    </tr>
-                                </thead>
+                                <thead><tr>
+                                    ${adminCols}
+                                    <th style="width:45%">${t('Goal')}</th>
+                                    <th>${t('Measured')}</th>
+                                    <th>${t('Target')}</th>
+                                    <th>${t('Assigned Staff')}</th>
+                                    <th></th>
+                                </tr></thead>
                                 <tbody>
-                                    ${g.goals.map(goal => `
-                                        <tr>
+                                    ${catGoals.map((goal, idx) => `
+                                        <tr id="goal-row-${goal.id}">
+                                            ${isAdmin() ? `
+                                            <td style="white-space:nowrap">
+                                                <button class="btn btn-sm btn-outline" style="padding:0.1rem 0.35rem;" ${idx === 0 ? 'disabled' : ''} onclick="moveGoal(${goal.id}, -1, ${g.category.id})" title="${t('Move up')}">▲</button>
+                                                <button class="btn btn-sm btn-outline" style="padding:0.1rem 0.35rem;" ${idx === catGoals.length - 1 ? 'disabled' : ''} onclick="moveGoal(${goal.id}, 1, ${g.category.id})" title="${t('Move down')}">▼</button>
+                                            </td>` : ''}
                                             <td>${goal.goal_eng || goal.goal_no}</td>
                                             <td>${goal.is_measured ? `<span class="text-success">${t('Yes')}</span>` : `<span class="text-muted">${t('No')}</span>`}</td>
                                             <td>${goal.target_percentage}%</td>
                                             <td>${goal.assigned_staff.map(s => s.name).join(', ') || '-'}</td>
-                                            <td class="text-right">
-                                                ${canEditGoal(goal) ? `
-                                                    <button class="btn btn-sm btn-outline" onclick="showGoalDetail(${goal.id})">
-                                                        ${t('View Rubrics')}
-                                                    </button>
-                                                ` : `
-                                                    <button class="btn btn-sm btn-outline" onclick="showGoalDetail(${goal.id})">
-                                                        ${t('View')}
-                                                    </button>
-                                                `}
+                                            <td class="text-right" style="white-space:nowrap">
+                                                <button class="btn btn-sm btn-outline" onclick="showGoalDetail(${goal.id})">${canEditGoal(goal) ? t('View Rubrics') : t('View')}</button>
                                                 ${isAdmin() ? `
-                                                    <button class="btn btn-sm btn-outline" onclick="showEditGoalModal(${goal.id})">
-                                                        ${t('Edit')}
-                                                    </button>
+                                                    <button class="btn btn-sm btn-outline" onclick="showEditGoalModal(${goal.id})">${t('Edit')}</button>
+                                                    <button class="btn btn-sm btn-outline" style="color:#b45309" onclick="confirmArchiveGoal(${goal.id})">${t('Archive')}</button>
                                                 ` : ''}
                                             </td>
                                         </tr>
@@ -304,8 +323,104 @@
                                 </tbody>
                             </table>
                         </div>
-                    </div>
-                `).join('');
+                    </div>`;
+                }).join('');
+
+            let historyHtml = '';
+            if (showHistory && archivedGoals.length > 0) {
+                const yearFilter = document.getElementById('history-year-filter')?.value || 'all';
+                let filtered = archivedGoals;
+                if (yearFilter !== 'all') {
+                    filtered = archivedGoals.filter(g => g.archived_at && new Date(g.archived_at).getFullYear() === parseInt(yearFilter));
+                }
+
+                const hGrouped = {};
+                categories.forEach(cat => { hGrouped[cat.id] = { category: cat, goals: [] }; });
+                filtered.forEach(goal => {
+                    if (hGrouped[goal.category.id]) hGrouped[goal.category.id].goals.push(goal);
+                });
+
+                const hRows = Object.values(hGrouped).filter(g => g.goals.length > 0).map(g => `
+                    <div class="card" style="opacity:0.75; border-left:3px solid #9ca3af;">
+                        <h3 class="mb-1" style="color:#6b7280">${locName(g.category)} — ${t('Archived')}</h3>
+                        <div class="table-container">
+                            <table>
+                                <thead><tr>
+                                    <th style="width:45%">${t('Goal')}</th>
+                                    <th>${t('Archived')}</th>
+                                    <th>${t('Replaced by')}</th>
+                                    <th></th>
+                                </tr></thead>
+                                <tbody>
+                                    ${g.goals.map(goal => {
+                                        const replacedBy = goal.superseded_by
+                                            ? (goals.find(g2 => g2.id === goal.superseded_by) || null)
+                                            : null;
+                                        const archivedDate = goal.archived_at ? new Date(goal.archived_at).toLocaleDateString() : '—';
+                                        return `<tr style="color:#6b7280">
+                                            <td>${goal.goal_eng || goal.goal_no}</td>
+                                            <td style="white-space:nowrap">${archivedDate}</td>
+                                            <td>${replacedBy ? (replacedBy.goal_eng || replacedBy.goal_no || `#${replacedBy.id}`) : '—'}</td>
+                                            <td class="text-right" style="white-space:nowrap">
+                                                <button class="btn btn-sm btn-outline" onclick="showGoalDetail(${goal.id})">${t('View')}</button>
+                                                ${isSystemAdmin() ? `<button class="btn btn-sm btn-outline" style="color:#059669" onclick="confirmRestoreGoal(${goal.id})">${t('Restore')}</button>` : ''}
+                                            </td>
+                                        </tr>`;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>`).join('');
+                historyHtml = hRows || `<p class="text-muted" style="margin-top:1rem">${t('No archived goals for selected period.')}</p>`;
+            }
+
+            container.innerHTML = activeHtml + historyHtml;
+        }
+
+        async function moveGoal(goalId, direction, categoryId) {
+            // Get all active goals in this category, sorted by sort_order
+            const catGoals = goals.filter(g => !g.archived && g.category.id === categoryId);
+            const idx = catGoals.findIndex(g => g.id === goalId);
+            const swapIdx = idx + direction;
+            if (swapIdx < 0 || swapIdx >= catGoals.length) return;
+
+            // Swap sort_orders
+            const a = catGoals[idx], b = catGoals[swapIdx];
+            const tmpOrder = a.sort_order;
+            a.sort_order = b.sort_order;
+            b.sort_order = tmpOrder;
+            // Ensure distinct if they were equal
+            if (a.sort_order === b.sort_order) {
+                b.sort_order = a.sort_order + (direction > 0 ? 1 : -1);
+            }
+
+            try {
+                await api.reorderGoals(programmeId, goals.filter(g => !g.archived).map(g => ({ id: g.id, sort_order: g.sort_order })));
+                renderGoals();
+            } catch (error) {
+                alert(t('Failed to reorder: ') + error.message);
+                loadGoals(); // reload to reset
+            }
+        }
+
+        async function confirmArchiveGoal(goalId) {
+            if (!confirm(t('Archive this goal? It will no longer appear in the active programme, but all historical data will be preserved.'))) return;
+            try {
+                await api.archiveGoal(goalId);
+                loadGoals();
+            } catch (error) {
+                alert(t('Failed to archive goal: ') + error.message);
+            }
+        }
+
+        async function confirmRestoreGoal(goalId) {
+            if (!confirm(t('Restore this goal to active status?'))) return;
+            try {
+                await api.unarchiveGoal(goalId);
+                loadGoals();
+            } catch (error) {
+                alert(t('Failed to restore goal: ') + error.message);
+            }
         }
 
         function showGoalDetail(goalId) {
@@ -482,6 +597,16 @@
                             <label class="form-label">${t('Target % (meets or exceeds expectations)')}</label>
                             <input type="number" id="goal-target" class="form-input" value="${goal.target_percentage}" min="0" max="100">
                         </div>
+                        <div class="form-group" style="border-top:1px solid #e5e7eb; padding-top:1rem; margin-top:0.5rem;">
+                            <label class="form-label">${t('Revision type')}</label>
+                            <div style="display:flex; gap:1rem;">
+                                <label style="cursor:pointer"><input type="radio" name="revision-type" value="minor" checked> ${t('Minor — fix wording, preserve history')}</label>
+                                <label style="cursor:pointer"><input type="radio" name="revision-type" value="major"> ${t('Major — new measurement history')}</label>
+                            </div>
+                            <div id="major-revision-warning" style="display:none; margin-top:0.5rem; padding:0.6rem 0.75rem; background:#fef3c7; border:1px solid #f59e0b; border-radius:4px; font-size:0.875rem; color:#92400e;">
+                                ⚠ ${t('This will archive the current goal and start a new measurement history. Course mappings will not be carried over.')}
+                            </div>
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button class="btn btn-danger" onclick="deleteGoal(${goalId}); this.closest('.modal-overlay').remove();">${t('Delete')}</button>
@@ -494,13 +619,23 @@
             document.body.appendChild(modal);
             requestAnimationFrame(() => modal.classList.add('active'));
 
+            // Show/hide major revision warning
+            modal.querySelectorAll('input[name="revision-type"]').forEach(radio => {
+                radio.addEventListener('change', () => {
+                    document.getElementById('major-revision-warning').style.display =
+                        radio.value === 'major' && radio.checked ? 'block' : 'none';
+                });
+            });
+
             document.getElementById('save-goal-btn').addEventListener('click', async () => {
+                const revisionType = modal.querySelector('input[name="revision-type"]:checked')?.value || 'minor';
                 const data = {
                     goal_category: parseInt(document.getElementById('goal-category').value),
                     goal_eng: document.getElementById('goal-eng').value,
                     goal_no: document.getElementById('goal-no').value,
                     is_measured: document.getElementById('goal-measured').checked,
                     target_percentage: parseFloat(document.getElementById('goal-target').value),
+                    revision_type: revisionType,
                 };
 
                 try {

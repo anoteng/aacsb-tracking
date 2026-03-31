@@ -74,8 +74,24 @@ class ApiClient {
     }
 
     // Goals
-    async getGoals(programmeId) {
-        return this.request(`/aol/programmes/${programmeId}/goals`);
+    async getGoals(programmeId, includeArchived = false) {
+        const params = includeArchived ? '?include_archived=true' : '';
+        return this.request(`/aol/programmes/${programmeId}/goals${params}`);
+    }
+
+    async archiveGoal(goalId) {
+        return this.request(`/aol/goals/${goalId}/archive`, { method: 'POST' });
+    }
+
+    async unarchiveGoal(goalId) {
+        return this.request(`/aol/goals/${goalId}/unarchive`, { method: 'POST' });
+    }
+
+    async reorderGoals(programmeId, items) {
+        return this.request(`/aol/programmes/${programmeId}/goals/reorder`, {
+            method: 'PUT',
+            body: items,
+        });
     }
 
     async createGoal(programmeId, data) {

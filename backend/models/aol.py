@@ -111,6 +111,10 @@ class LearningGoal(Base):
     programme_id = Column(Integer, ForeignKey("study_programme.id"), nullable=False)
     is_measured = Column(Boolean, default=False)
     target_percentage = Column(Numeric(5, 2), default=80.00)
+    sort_order = Column(Integer, nullable=False, default=0)
+    archived = Column(Boolean, nullable=False, default=False)
+    superseded_by = Column(Integer, ForeignKey("learning_goals.id"), nullable=True)
+    archived_at = Column(DateTime, nullable=True)
 
     # Relationships
     category = relationship("GoalCategory", back_populates="goals")

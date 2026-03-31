@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from typing import Literal
+from datetime import datetime as dt
 
 from database import get_db
 from dependencies import get_current_user, require_role
@@ -87,6 +88,7 @@ class LearningGoalUpdate(BaseModel):
     goal_category: int | None = None
     is_measured: bool | None = None
     target_percentage: float | None = None
+    revision_type: Literal["minor", "major"] = "minor"
 
 
 class LearningGoalResponse(BaseModel):
@@ -98,9 +100,18 @@ class LearningGoalResponse(BaseModel):
     is_measured: bool
     target_percentage: float
     assigned_staff: list[dict] = []
+    sort_order: int = 0
+    archived: bool = False
+    archived_at: dt | None = None
+    superseded_by: int | None = None
 
     class Config:
         from_attributes = True
+
+
+class GoalReorderItem(BaseModel):
+    id: int
+    sort_order: int
 
 
 class MatrixEntryUpdate(BaseModel):
@@ -378,16 +389,28 @@ async def list_categories(
 @router.get("/programmes/{programme_id}/goals", response_model=list[LearningGoalResponse])
 async def list_goals(
     programme_id: int,
+    req: Request,
+    include_archived: bool = False,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    """List all learning goals for a programme."""
-    goals = (
+    """List learning goals for a programme. include_archived requires programme admin."""
+    if include_archived:
+        real_user = getattr(req.state, "real_user", user)
+        auth_service = AuthService(db)
+        roles = auth_service.get_user_roles(real_user)
+        if "system_admin" not in roles and "programme_leader" not in roles and not is_programme_admin(real_user, programme_id, db):
+            raise HTTPException(status_code=403, detail="Not authorized to view archived goals")
+
+    query = (
         db.query(LearningGoal)
         .options(joinedload(LearningGoal.category), joinedload(LearningGoal.staff_assignments))
         .filter(LearningGoal.programme_id == programme_id)
-        .all()
     )
+    if not include_archived:
+        query = query.filter(LearningGoal.archived == False)
+
+    goals = query.order_by(LearningGoal.goal_category, LearningGoal.sort_order, LearningGoal.id).all()
 
     result = []
     for g in goals:
@@ -407,6 +430,10 @@ async def list_goals(
                 is_measured=g.is_measured,
                 target_percentage=float(g.target_percentage) if g.target_percentage else 80.0,
                 assigned_staff=assigned,
+                sort_order=g.sort_order,
+                archived=g.archived,
+                archived_at=g.archived_at,
+                superseded_by=g.superseded_by,
             )
         )
     return result
@@ -432,6 +459,10 @@ async def create_goal(
     if not cat:
         raise HTTPException(status_code=404, detail="Category not found")
 
+    max_order = db.query(func.max(LearningGoal.sort_order)).filter(
+        LearningGoal.programme_id == programme_id
+    ).scalar() or 0
+
     goal = LearningGoal(
         goal_no=request.goal_no,
         goal_eng=request.goal_eng,
@@ -439,6 +470,7 @@ async def create_goal(
         programme_id=programme_id,
         is_measured=request.is_measured,
         target_percentage=request.target_percentage,
+        sort_order=max_order + 1,
     )
     db.add(goal)
     db.commit()
@@ -453,6 +485,7 @@ async def create_goal(
         is_measured=goal.is_measured,
         target_percentage=float(goal.target_percentage) if goal.target_percentage else 80.0,
         assigned_staff=[],
+        sort_order=goal.sort_order,
     )
 
 
@@ -464,12 +497,47 @@ async def update_goal(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    """Update a learning goal. Admin or programme admin_staff only."""
-    goal = db.query(LearningGoal).options(joinedload(LearningGoal.category)).filter(LearningGoal.id == goal_id).first()
+    """Update a learning goal. Minor revision: in-place. Major revision: archives old, creates new."""
+    goal = db.query(LearningGoal).options(
+        joinedload(LearningGoal.category), joinedload(LearningGoal.staff_assignments)
+    ).filter(LearningGoal.id == goal_id).first()
     if not goal:
         raise HTTPException(status_code=404, detail="Goal not found")
     check_programme_access(req, goal.programme_id, db, user)
 
+    if request.revision_type == "major":
+        new_goal = LearningGoal(
+            goal_no=request.goal_no if request.goal_no is not None else goal.goal_no,
+            goal_eng=request.goal_eng if request.goal_eng is not None else goal.goal_eng,
+            goal_category=request.goal_category if request.goal_category is not None else goal.goal_category,
+            programme_id=goal.programme_id,
+            is_measured=request.is_measured if request.is_measured is not None else goal.is_measured,
+            target_percentage=request.target_percentage if request.target_percentage is not None else goal.target_percentage,
+            sort_order=goal.sort_order,
+        )
+        db.add(new_goal)
+        db.flush()  # get new_goal.id
+
+        goal.archived = True
+        goal.archived_at = dt.utcnow()
+        goal.superseded_by = new_goal.id
+        db.commit()
+        db.refresh(new_goal)
+
+        cat = db.query(GoalCategory).filter(GoalCategory.id == new_goal.goal_category).first()
+        return LearningGoalResponse(
+            id=new_goal.id,
+            goal_no=new_goal.goal_no,
+            goal_eng=new_goal.goal_eng,
+            category=GoalCategoryResponse(id=cat.id, name_no=cat.name_no, name_eng=cat.name_eng),
+            programme_id=new_goal.programme_id,
+            is_measured=new_goal.is_measured,
+            target_percentage=float(new_goal.target_percentage) if new_goal.target_percentage else 80.0,
+            assigned_staff=[],
+            sort_order=new_goal.sort_order,
+        )
+
+    # Minor revision — update in place
     if request.goal_no is not None:
         goal.goal_no = request.goal_no
     if request.goal_eng is not None:
@@ -498,6 +566,7 @@ async def update_goal(
             {"user_id": a.user_id, "name": f"{a.user.firstname} {a.user.lastname}"}
             for a in goal.staff_assignments
         ],
+        sort_order=goal.sort_order,
     )
 
 
@@ -517,6 +586,69 @@ async def delete_goal(
     db.delete(goal)
     db.commit()
     return {"message": "Goal deleted"}
+
+
+@router.post("/goals/{goal_id}/archive")
+async def archive_goal(
+    goal_id: int,
+    req: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Archive a goal (retire without replacement). Programme admin only."""
+    goal = db.query(LearningGoal).filter(LearningGoal.id == goal_id).first()
+    if not goal:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    if goal.archived:
+        raise HTTPException(status_code=400, detail="Goal is already archived")
+    check_programme_access(req, goal.programme_id, db, user)
+    goal.archived = True
+    goal.archived_at = dt.utcnow()
+    db.commit()
+    return {"message": "Goal archived"}
+
+
+@router.post("/goals/{goal_id}/unarchive")
+async def unarchive_goal(
+    goal_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role("system_admin")),
+):
+    """Restore an archived goal. System admin only."""
+    goal = db.query(LearningGoal).filter(LearningGoal.id == goal_id).first()
+    if not goal:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    if not goal.archived:
+        raise HTTPException(status_code=400, detail="Goal is not archived")
+    goal.archived = False
+    goal.archived_at = None
+    goal.superseded_by = None
+    db.commit()
+    return {"message": "Goal restored"}
+
+
+@router.put("/programmes/{programme_id}/goals/reorder")
+async def reorder_goals(
+    programme_id: int,
+    req: Request,
+    items: list[GoalReorderItem],
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Batch-update sort_order for goals in a programme. Programme admin only."""
+    check_programme_access(req, programme_id, db, user)
+    ids = [item.id for item in items]
+    goals = db.query(LearningGoal).filter(
+        LearningGoal.id.in_(ids),
+        LearningGoal.programme_id == programme_id,
+    ).all()
+    if len(goals) != len(ids):
+        raise HTTPException(status_code=400, detail="Some goals do not belong to this programme")
+    order_map = {item.id: item.sort_order for item in items}
+    for goal in goals:
+        goal.sort_order = order_map[goal.id]
+    db.commit()
+    return {"message": "Goals reordered"}
 
 
 # ============================================
