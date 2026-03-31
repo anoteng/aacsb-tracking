@@ -31,6 +31,8 @@
         .course-code { font-weight: 600; font-size: 0.9rem; }
         .course-name-small { font-size: 0.8rem; color: var(--text-muted); }
         .coordinator-tag { font-size: 0.75rem; color: var(--text-muted); }
+        .prme-badge { display: inline-block; font-size: 0.7rem; font-weight: 600; background: #d1fae5; color: #065f46; padding: 0.1rem 0.4rem; border-radius: 3px; }
+        .prme-badge-off { background: #f1f5f9; color: #94a3b8; }
 
         .detail-section { margin-bottom: 1.5rem; }
         .detail-section h3 { margin: 0 0 0.75rem; font-size: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; }
@@ -74,13 +76,20 @@
     </style>
 </head>
 <body>
+    <div id="impersonation-banner" style="display:none; background:#92400e; color:white; padding:0.5rem 1.5rem; font-size:0.875rem; gap:0.75rem; align-items:center;">
+        <span data-i18n="Viewing as:">Viewing as:</span>
+        <strong id="impersonating-name"></strong>
+        <button onclick="stopImpersonation()" style="margin-left:0.5rem; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.4); color:white; padding:0.15rem 0.75rem; border-radius:4px; cursor:pointer; font-size:0.8rem;" data-i18n="Stop Viewing As">Stop Viewing As</button>
+    </div>
     <nav class="nav">
         <div class="container">
-            <a href="/aacsb/aol" class="nav-brand">AACSB Accreditation</a>
+            <a href="/aacsb/dashboard" class="nav-brand">AACSB Accreditation</a>
             <ul class="nav-links">
                 <li><a href="/aacsb/aol">AOL</a></li>
                 <li><a href="/aacsb/aol/courses" class="active" data-i18n="Courses">Courses</a></li>
                 <li><a href="/aacsb/research" data-i18n="Research">Research</a></li>
+                <li><a href="/aacsb/qualifications" data-i18n="Qualifications">Qualifications</a></li>
+                <li><a href="/aacsb/admin" data-i18n="Admin">Admin</a></li>
             </ul>
             <div class="nav-user" id="nav-user"><span>Loading...</span></div>
             <select id="lang-switcher" onchange="i18n.setLang(this.value)" style="margin-left:0.5rem; padding:0.25rem 0.5rem; border:1px solid rgba(255,255,255,0.3); border-radius:4px; font-size:0.875rem; background:#1e40af; color:white;">
@@ -205,17 +214,21 @@
         function renderNav() {
             document.getElementById('nav-user').innerHTML = `
                 <span>${currentUser.firstname} ${currentUser.lastname}</span>
-                <a href="/aacsb/aol/settings" class="btn btn-sm btn-outline" style="color:white;border-color:rgba(255,255,255,0.3);">${t('Settings')}</a>
+                <a href="/aacsb/settings" class="btn btn-sm btn-outline" style="color:white;border-color:rgba(255,255,255,0.3);">${t('Settings')}</a>
                 <button onclick="api.logout().then(()=>window.location.href='/aacsb/login')" class="btn btn-sm btn-outline" style="color:white;border-color:rgba(255,255,255,0.3);">${t('Logout')}</button>
             `;
-            if (currentUser.roles.includes('system_admin')) {
-                const navLinks = document.querySelector('.nav-links');
-                if (!navLinks.querySelector('a[href="/aacsb/admin"]')) {
-                    const li = document.createElement('li');
-                    li.innerHTML = '<a href="/aacsb/admin">Admin</a>';
-                    navLinks.appendChild(li);
+            if (currentUser.impersonation && currentUser.impersonation.active) {
+                const banner = document.getElementById('impersonation-banner');
+                if (banner) {
+                    document.getElementById('impersonating-name').textContent = currentUser.impersonation.viewing_as.name;
+                    banner.style.display = 'flex';
                 }
             }
+        }
+
+        async function stopImpersonation() {
+            await fetch('/aacsb/api/admin/stop-impersonation', { method: 'POST', credentials: 'include' });
+            location.reload();
         }
 
         async function loadCourses() {
@@ -232,7 +245,10 @@
             }
             ul.innerHTML = courses.map(c => `
                 <li onclick="selectCourse(${c.id})" id="course-item-${c.id}" class="${c.id === selectedCourseId ? 'active' : ''}">
-                    <span class="course-code">${c.course_code}-${c.course_version}</span>
+                    <div style="display:flex;align-items:center;gap:0.4rem;">
+                        <span class="course-code">${c.course_code}-${c.course_version}</span>
+                        ${c.prme_report ? `<span class="prme-badge">PRME</span>` : ''}
+                    </div>
                     <span class="course-name-small">${c.name_no || c.name_eng || ''}</span>
                     ${c.coordinator ? `<span class="coordinator-tag">${c.coordinator.name}</span>` : ''}
                 </li>
@@ -261,9 +277,16 @@
                 <div class="card" style="padding:1.5rem;">
                     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.5rem;">
                         <div>
-                            <h2 style="margin:0;">${course.course_code}-${course.course_version} &nbsp;<span class="text-muted" style="font-weight:normal;font-size:1rem;">${course.ects} ECTS</span></h2>
+                            <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.15rem;">
+                                <h2 style="margin:0;">${course.course_code}-${course.course_version} &nbsp;<span class="text-muted" style="font-weight:normal;font-size:1rem;">${course.ects} ECTS</span></h2>
+                                <span id="prme-badge" class="prme-badge ${course.prme_report ? '' : 'prme-badge-off'}">${course.prme_report ? 'PRME' : 'PRME'}</span>
+                            </div>
                             ${course.name_no ? `<div style="font-size:1.1rem;margin-top:0.25rem;">${course.name_no}</div>` : ''}
                             ${course.name_eng && course.name_eng !== course.name_no ? `<div class="text-muted">${course.name_eng}</div>` : ''}
+                        </div>
+                        <div style="display:flex;gap:0.5rem;align-items:center;">
+                            ${isAdmin ? `<button class="btn btn-sm btn-outline" id="prme-btn" onclick="togglePrme(${course.id}, ${course.prme_report})" title="${t('Toggle PRME reporting')}">${course.prme_report ? t('Unmark PRME') : t('Mark as PRME')}</button>` : ''}
+                            <a href="/aacsb/aol/course/${course.id}" class="btn btn-primary btn-sm">${t('Edit Matrix')}</a>
                         </div>
                     </div>
 
@@ -497,6 +520,39 @@
             } else {
                 alert(t('Could not remove coordinator.'));
             }
+        }
+
+        async function togglePrme(courseId, currentValue) {
+            const res = await fetch(`${API}/aol/courses/${courseId}/prme`, {
+                method: 'PATCH',
+                credentials: 'include',
+            });
+            if (!res.ok) { alert(t('Could not update PRME status.')); return; }
+            const data = await res.json();
+            // Update badge in detail
+            const badge = document.getElementById('prme-badge');
+            if (badge) {
+                badge.classList.toggle('prme-badge-off', !data.prme_report);
+            }
+            // Update button text
+            const btn = document.getElementById('prme-btn');
+            if (btn) {
+                btn.textContent = data.prme_report ? t('Unmark PRME') : t('Mark as PRME');
+                btn.setAttribute('onclick', `togglePrme(${courseId}, ${data.prme_report})`);
+            }
+            // Update the list badge
+            const listItem = document.getElementById(`course-item-${courseId}`);
+            if (listItem) {
+                const existing = listItem.querySelector('.prme-badge');
+                if (data.prme_report && !existing) {
+                    listItem.querySelector('div').insertAdjacentHTML('beforeend', `<span class="prme-badge">PRME</span>`);
+                } else if (!data.prme_report && existing) {
+                    existing.remove();
+                }
+            }
+            // Keep local data in sync
+            const c = allCourses.find(c => c.id === courseId);
+            if (c) c.prme_report = data.prme_report;
         }
 
         init();

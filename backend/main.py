@@ -7,6 +7,7 @@ import os
 from config import get_settings
 from routers import auth_router, aol_router, users_router, admin_router, research_router
 from routers.passkey import router as passkey_router
+from routers.dashboard import router as dashboard_router
 
 settings = get_settings()
 
@@ -33,6 +34,7 @@ app.include_router(aol_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")
 app.include_router(research_router, prefix="/api")
 app.include_router(passkey_router, prefix="/api")
+app.include_router(dashboard_router, prefix="/api")
 
 
 # Health check
@@ -50,7 +52,15 @@ if os.path.exists(frontend_path):
 # Serve frontend pages
 @app.get("/")
 async def root():
-    return RedirectResponse(url="/aacsb/aol")
+    return RedirectResponse(url="/aacsb/dashboard")
+
+
+@app.get("/dashboard")
+async def dashboard_page():
+    page_path = os.path.join(frontend_path, "dashboard.html")
+    if os.path.exists(page_path):
+        return FileResponse(page_path)
+    return {"message": "Dashboard page not found"}
 
 
 @app.get("/aol")
@@ -76,6 +86,8 @@ async def aol_courses():
     if os.path.exists(page_path):
         return FileResponse(page_path)
     return {"message": "Courses page not found"}
+
+
 
 
 @app.get("/aol/settings")

@@ -440,12 +440,19 @@ async def get_current_user_info(
     is_impersonating = getattr(request.state, 'is_impersonating', False)
     real_user = getattr(request.state, 'real_user', user)
 
+    programme_roles = [
+        {"programme_id": pr.programme_id, "role_name": pr.role.role_name}
+        for pr in user.programme_roles
+        if pr.role
+    ]
+
     response = {
         "id": user.uuid,
         "email": user.email,
         "firstname": user.firstname,
         "lastname": user.lastname,
         "roles": auth_service.get_user_roles(user),
+        "programme_roles": programme_roles,
         "has_password": user.password_hash is not None,
         "has_google": user.google_id is not None,
     }

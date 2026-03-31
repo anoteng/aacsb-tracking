@@ -679,19 +679,24 @@ async def get_my_qualification_status(
         .first()
     )
 
-    # Get contributions
-    contributions_data = await get_my_contributions(
-        year_from=REFERENCE_YEAR - 6,
-        year_to=REFERENCE_YEAR,
-        db=db,
-        current_user=current_user,
-    )
-    contributions = contributions_data.get("contributions", [])
+    # Get contributions — NVA may be unavailable, so degrade gracefully
+    nva_error = None
+    contributions = []
+    try:
+        contributions_data = await get_my_contributions(
+            year_from=REFERENCE_YEAR - 6,
+            year_to=REFERENCE_YEAR,
+            db=db,
+            current_user=current_user,
+        )
+        contributions = contributions_data.get("contributions", [])
+    except Exception as e:
+        nva_error = str(e)
 
     # Get activities
     activities = await get_my_activities(db=db, current_user=current_user)
 
-    # Calculate status
+    # Calculate status (works with empty contributions list)
     status = calculate_qualification_status(user, contributions, activities)
 
     return {
@@ -717,6 +722,7 @@ async def get_my_qualification_status(
             "categorized_contributions": sum(1 for c in contributions if c.get("my_categorization")),
             "total_activities": len(activities),
         },
+        "nva_error": nva_error,
     }
 
 

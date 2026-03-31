@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Date, ForeignKey, Numeric
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, ForeignKey, Numeric
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
@@ -32,6 +32,7 @@ class Course(Base):
     active_from = Column(Integer)
     active_to = Column(Integer)
     ects = Column(Numeric(4, 1), nullable=False)
+    prme_report = Column(Boolean, nullable=False, default=False)
 
     # Relationships
     programmes = relationship("ProgrammeCourse", back_populates="course")

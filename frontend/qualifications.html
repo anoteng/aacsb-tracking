@@ -423,9 +423,10 @@
 
     <nav class="nav">
         <div class="container">
-            <a href="/aacsb/aol" class="nav-brand">AACSB Accreditation</a>
+            <a href="/aacsb/dashboard" class="nav-brand">AACSB Accreditation</a>
             <ul class="nav-links">
                 <li><a href="/aacsb/aol">AOL</a></li>
+                <li><a href="/aacsb/aol/courses" data-i18n="Courses">Courses</a></li>
                 <li><a href="/aacsb/research" data-i18n="Research">Research</a></li>
                 <li><a href="/aacsb/qualifications" class="active" data-i18n="Qualifications">Qualifications</a></li>
                 <li><a href="/aacsb/admin" data-i18n="Admin">Admin</a></li>
@@ -619,7 +620,7 @@
                 myStatus = await response.json();
                 renderStatus();
             } catch (error) {
-                document.getElementById('status-loading').innerHTML = `<p class="text-error">Error: ${error.message}</p>`;
+                document.getElementById('status-loading').innerHTML = `<p class="text-error">${t('Failed to load status')}: ${error.message}</p>`;
             }
         }
 
@@ -628,6 +629,13 @@
             document.getElementById('status-loading').style.display = 'none';
             const content = document.getElementById('status-content');
             content.style.display = 'block';
+
+            if (myStatus.nva_error) {
+                content.insertAdjacentHTML('afterbegin', `
+                    <div style="background:#fef3c7; border:1px solid #fbbf24; border-radius:6px; padding:0.75rem 1rem; margin-bottom:1rem; font-size:0.875rem; color:#92400e;">
+                        &#9888; ${t('Publication data could not be loaded from NVA. Qualification status may be incomplete.')}
+                    </div>`);
+            }
 
             const user = myStatus.user;
             const qual = myStatus.qualification;

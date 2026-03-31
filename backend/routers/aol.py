@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
@@ -9,6 +9,8 @@ from dependencies import get_current_user, require_role
 from services.auth import AuthService
 from models import (
     User,
+    UserProgrammeRole,
+    Role,
     StudyProgramme,
     Course,
     ProgrammeCourse,
@@ -56,6 +58,7 @@ class CourseResponse(BaseModel):
     name_no: str | None
     name_eng: str | None
     ects: float
+    prme_report: bool = False
 
     class Config:
         from_attributes = True
@@ -228,6 +231,51 @@ class AssessmentResponse(BaseModel):
 # Helper Functions
 # ============================================
 
+def is_course_coordinator(user: User, course_id: int, db: Session) -> bool:
+    """Check if user is the active coordinator of a course."""
+    from datetime import date
+    today = date.today()
+    cc = (
+        db.query(CourseCoordinator)
+        .filter(
+            CourseCoordinator.course_id == course_id,
+            CourseCoordinator.user_id == user.uuid,
+        )
+        .first()
+    )
+    if not cc:
+        return False
+    return (
+        (cc.start_date is None or cc.start_date <= today)
+        and (cc.end_date is None or cc.end_date >= today)
+    )
+
+
+def is_programme_admin(user: User, programme_id: int, db: Session) -> bool:
+    """Check if user has admin_staff programme-level role for a specific programme."""
+    return (
+        db.query(UserProgrammeRole)
+        .join(Role, Role.role_id == UserProgrammeRole.role_id)
+        .filter(
+            UserProgrammeRole.user_id == user.uuid,
+            UserProgrammeRole.programme_id == programme_id,
+            Role.role_name == "admin_staff",
+        )
+        .first() is not None
+    )
+
+
+def check_programme_access(request: Request, programme_id: int, db: Session, user: User) -> None:
+    """Raise 403 if neither system_admin nor programme admin_staff for this programme.
+    Always checks the real user (safe under impersonation)."""
+    real_user = getattr(request.state, "real_user", user)
+    auth_service = AuthService(db)
+    if "system_admin" in auth_service.get_user_roles(real_user):
+        return
+    if not is_programme_admin(real_user, programme_id, db):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized for this programme")
+
+
 def can_edit_goal(user: User, goal: LearningGoal, db: Session) -> bool:
     """Check if user can edit a specific goal's rubrics/traits."""
     auth_service = AuthService(db)
@@ -367,11 +415,13 @@ async def list_goals(
 @router.post("/programmes/{programme_id}/goals", response_model=LearningGoalResponse)
 async def create_goal(
     programme_id: int,
+    req: Request,
     request: LearningGoalCreate,
     db: Session = Depends(get_db),
-    user: User = Depends(require_role("system_admin")),
+    user: User = Depends(get_current_user),
 ):
-    """Create a new learning goal. Admin only."""
+    """Create a new learning goal. Admin or programme admin_staff only."""
+    check_programme_access(req, programme_id, db, user)
     # Verify programme exists
     prog = db.query(StudyProgramme).filter(StudyProgramme.id == programme_id).first()
     if not prog:
@@ -409,14 +459,16 @@ async def create_goal(
 @router.patch("/goals/{goal_id}", response_model=LearningGoalResponse)
 async def update_goal(
     goal_id: int,
+    req: Request,
     request: LearningGoalUpdate,
     db: Session = Depends(get_db),
-    user: User = Depends(require_role("system_admin")),
+    user: User = Depends(get_current_user),
 ):
-    """Update a learning goal. Admin only."""
+    """Update a learning goal. Admin or programme admin_staff only."""
     goal = db.query(LearningGoal).options(joinedload(LearningGoal.category)).filter(LearningGoal.id == goal_id).first()
     if not goal:
         raise HTTPException(status_code=404, detail="Goal not found")
+    check_programme_access(req, goal.programme_id, db, user)
 
     if request.goal_no is not None:
         goal.goal_no = request.goal_no
@@ -452,13 +504,15 @@ async def update_goal(
 @router.delete("/goals/{goal_id}")
 async def delete_goal(
     goal_id: int,
+    req: Request,
     db: Session = Depends(get_db),
-    user: User = Depends(require_role("system_admin")),
+    user: User = Depends(get_current_user),
 ):
-    """Delete a learning goal. Admin only."""
+    """Delete a learning goal. Admin or programme admin_staff only."""
     goal = db.query(LearningGoal).filter(LearningGoal.id == goal_id).first()
     if not goal:
         raise HTTPException(status_code=404, detail="Goal not found")
+    check_programme_access(req, goal.programme_id, db, user)
 
     db.delete(goal)
     db.commit()
@@ -473,13 +527,15 @@ async def delete_goal(
 async def assign_staff_to_goal(
     goal_id: int,
     user_id: int,
+    req: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("system_admin", "programme_leader")),
+    current_user: User = Depends(get_current_user),
 ):
     """Assign a staff member to a goal."""
     goal = db.query(LearningGoal).filter(LearningGoal.id == goal_id).first()
     if not goal:
         raise HTTPException(status_code=404, detail="Goal not found")
+    check_programme_access(req, goal.programme_id, db, current_user)
 
     target_user = db.query(User).filter(User.uuid == user_id).first()
     if not target_user:
@@ -509,10 +565,15 @@ async def assign_staff_to_goal(
 async def unassign_staff_from_goal(
     goal_id: int,
     user_id: int,
+    req: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("system_admin", "programme_leader")),
+    current_user: User = Depends(get_current_user),
 ):
     """Remove a staff assignment from a goal."""
+    goal = db.query(LearningGoal).filter(LearningGoal.id == goal_id).first()
+    if not goal:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    check_programme_access(req, goal.programme_id, db, current_user)
     db.query(GoalStaffAssignment).filter(
         GoalStaffAssignment.goal_id == goal_id,
         GoalStaffAssignment.user_id == user_id,
@@ -693,9 +754,13 @@ async def update_matrix_entry(
     course_id: int,
     request: MatrixEntryUpdate,
     db: Session = Depends(get_db),
-    user: User = Depends(require_role("system_admin")),
+    user: User = Depends(get_current_user),
 ):
-    """Update a goal-course matrix entry. Admin only."""
+    """Update a goal-course matrix entry. Admin or course coordinator."""
+    auth_service = AuthService(db)
+    roles = auth_service.get_user_roles(user)
+    if "system_admin" not in roles and not is_course_coordinator(user, course_id, db):
+        raise HTTPException(status_code=403, detail="Not authorized to update this matrix entry")
     # Get or create matrix entry
     entry = (
         db.query(GoalCourseMatrix)
@@ -772,11 +837,13 @@ async def get_technologies(
 async def update_course_metadata(
     programme_id: int,
     course_id: int,
+    req: Request,
     request: CourseMetadataUpdate,
     db: Session = Depends(get_db),
-    user: User = Depends(require_role("system_admin")),
+    user: User = Depends(get_current_user),
 ):
     """Update course metadata (learning methods, assessment methods, technologies, SDGs)."""
+    check_programme_access(req, programme_id, db, user)
     # Update learning methods
     db.query(CourseLearningMethod).filter(
         CourseLearningMethod.programme_id == programme_id,
@@ -1278,12 +1345,14 @@ class CourseSemesterUpdate(BaseModel):
 async def add_course_to_programme(
     programme_id: int,
     course_id: int,
+    req: Request,
     year: int = 1,
     semester: int = 1,
     db: Session = Depends(get_db),
-    user: User = Depends(require_role("system_admin")),
+    user: User = Depends(get_current_user),
 ):
-    """Add a course to a programme. Admin only."""
+    """Add a course to a programme. Admin or programme admin_staff only."""
+    check_programme_access(req, programme_id, db, user)
     # Verify programme and course exist
     prog = db.query(StudyProgramme).filter(StudyProgramme.id == programme_id).first()
     if not prog:
@@ -1323,11 +1392,13 @@ async def add_course_to_programme(
 async def update_course_semester(
     programme_id: int,
     course_id: int,
+    req: Request,
     request: CourseSemesterUpdate,
     db: Session = Depends(get_db),
-    user: User = Depends(require_role("system_admin")),
+    user: User = Depends(get_current_user),
 ):
-    """Update the semester for a course in a programme. Admin only."""
+    """Update the semester for a course in a programme. Admin or programme admin_staff only."""
+    check_programme_access(req, programme_id, db, user)
     pc = (
         db.query(ProgrammeCourse)
         .filter(
@@ -1382,6 +1453,7 @@ async def list_courses(
             "name_no": c.name_no,
             "name_eng": c.name_eng,
             "ects": float(c.ects),
+            "prme_report": bool(c.prme_report),
             "coordinator": {
                 "id": current_coord.user.uuid,
                 "name": current_coord.user.full_name,
@@ -1481,9 +1553,99 @@ async def get_course(
         "name_no": course.name_no,
         "name_eng": course.name_eng,
         "ects": float(course.ects),
+        "prme_report": bool(course.prme_report),
         "coordinators": coordinators,
         "programmes": programmes,
         "goals": goals,
+    }
+
+
+@router.patch("/courses/{course_id}/prme")
+async def set_course_prme(
+    course_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role("system_admin")),
+):
+    """Toggle PRME reporting flag on a course (admin only)."""
+    course = db.query(Course).filter(Course.id == course_id).first()
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+    course.prme_report = not course.prme_report
+    db.commit()
+    return {"prme_report": bool(course.prme_report)}
+
+
+@router.get("/courses/{course_id}/matrix-view")
+async def get_course_matrix_view(
+    course_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Per-course view of all programmes and their learning goals with matrix values.
+    Accessible by system_admin or the active course coordinator."""
+    auth_service = AuthService(db)
+    roles = auth_service.get_user_roles(user)
+    if "system_admin" not in roles and not is_course_coordinator(user, course_id, db):
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    course = (
+        db.query(Course)
+        .options(
+            joinedload(Course.programmes).joinedload(ProgrammeCourse.programme),
+        )
+        .filter(Course.id == course_id)
+        .first()
+    )
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    programmes = []
+    for pc in course.programmes:
+        prog = pc.programme
+        goals = (
+            db.query(LearningGoal)
+            .options(joinedload(LearningGoal.category))
+            .filter(LearningGoal.programme_id == prog.id)
+            .order_by(LearningGoal.goal_category, LearningGoal.id)
+            .all()
+        )
+        matrix_entries = {
+            e.goal_id: e
+            for e in db.query(GoalCourseMatrix).filter(
+                GoalCourseMatrix.course_id == course_id,
+                GoalCourseMatrix.goal_id.in_([g.id for g in goals]),
+            ).all()
+        }
+        goal_list = []
+        for g in goals:
+            entry = matrix_entries.get(g.id)
+            goal_list.append({
+                "goal_id": g.id,
+                "goal_no": g.goal_no,
+                "goal_eng": g.goal_eng,
+                "category_id": g.goal_category,
+                "category_name_no": g.category.name_no if g.category else None,
+                "category_name_eng": g.category.name_eng if g.category else None,
+                "learning_level": entry.learning_level if entry else 0,
+                "is_assessed": entry.is_assessed if entry else False,
+            })
+        programmes.append({
+            "programme_id": prog.id,
+            "programme_code": prog.programme_code,
+            "name_no": prog.name_no,
+            "name_eng": prog.name_eng,
+            "semester": pc.semester,
+            "goals": goal_list,
+        })
+
+    return {
+        "id": course.id,
+        "course_code": course.course_code,
+        "course_version": course.course_version,
+        "name_no": course.name_no,
+        "name_eng": course.name_eng,
+        "ects": float(course.ects),
+        "programmes": programmes,
     }
 
 

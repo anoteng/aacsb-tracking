@@ -37,13 +37,11 @@ class AolApp {
             `;
         }
 
-        // Add Admin link for system admins
-        if (this.isAdmin()) {
-            const navLinks = document.querySelector('.nav-links');
-            if (navLinks && !navLinks.querySelector('a[href="/aacsb/admin"]')) {
-                const adminLi = document.createElement('li');
-                adminLi.innerHTML = '<a href="/aacsb/admin">Admin</a>';
-                navLinks.appendChild(adminLi);
+        if (this.user.impersonation && this.user.impersonation.active) {
+            const banner = document.getElementById('impersonation-banner');
+            if (banner) {
+                document.getElementById('impersonating-name').textContent = this.user.impersonation.viewing_as.name;
+                banner.style.display = 'flex';
             }
         }
     }

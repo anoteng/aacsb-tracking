@@ -117,6 +117,10 @@ class ApiClient {
         });
     }
 
+    async getCourseMatrixView(courseId) {
+        return this.request(`/aol/courses/${courseId}/matrix-view`);
+    }
+
     // Courses
     async getProgrammeCourses(programmeId) {
         return this.request(`/aol/programmes/${programmeId}/courses`);

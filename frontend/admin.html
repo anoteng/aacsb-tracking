@@ -269,9 +269,10 @@
 
     <nav class="nav">
         <div class="container">
-            <a href="/aacsb/aol" class="nav-brand">AACSB Accreditation</a>
+            <a href="/aacsb/dashboard" class="nav-brand">AACSB Accreditation</a>
             <ul class="nav-links">
                 <li><a href="/aacsb/aol">AOL</a></li>
+                <li><a href="/aacsb/aol/courses" data-i18n="Courses">Courses</a></li>
                 <li><a href="/aacsb/research" data-i18n="Research">Research</a></li>
                 <li><a href="/aacsb/qualifications" data-i18n="Qualifications">Qualifications</a></li>
                 <li><a href="/aacsb/admin" class="active" data-i18n="Admin">Admin</a></li>
@@ -353,7 +354,7 @@
 
                 document.getElementById('nav-user').innerHTML = `
                     <span>${currentUser.firstname} ${currentUser.lastname}</span>
-                    <a href="/aacsb/aol/settings" class="btn btn-sm btn-outline" style="color: white; border-color: rgba(255,255,255,0.3);">${t('Settings')}</a>
+                    <a href="/aacsb/settings" class="btn btn-sm btn-outline" style="color: white; border-color: rgba(255,255,255,0.3);">${t('Settings')}</a>
                     <button onclick="logout()" class="btn btn-sm btn-outline" style="color: white; border-color: rgba(255,255,255,0.3);">${t('Logout')}</button>
                 `;
             } catch (error) {

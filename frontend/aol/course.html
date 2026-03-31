@@ -117,7 +117,7 @@
     </div>
     <nav class="nav">
         <div class="container">
-            <a href="/aacsb/aol" class="nav-brand">AACSB Accreditation</a>
+            <a href="/aacsb/dashboard" class="nav-brand">AACSB Accreditation</a>
             <ul class="nav-links">
                 <li><a href="/aacsb/aol">AOL</a></li>
                 <li><a href="/aacsb/aol/courses" data-i18n="Courses">Courses</a></li>
@@ -181,7 +181,7 @@
             const navUser = document.getElementById('nav-user');
             navUser.innerHTML = `
                 <span>${user.full_name}</span>
-                <a href="/aacsb/aol/settings" style="margin-left:0.75rem; color:rgba(255,255,255,0.7); font-size:0.8rem;">${t('Settings')}</a>
+                <a href="/aacsb/settings" style="margin-left:0.75rem; color:rgba(255,255,255,0.7); font-size:0.8rem;">${t('Settings')}</a>
                 <a href="#" onclick="api.logout().then(()=>location.href='/aacsb/login')" style="margin-left:0.75rem; color:rgba(255,255,255,0.7); font-size:0.8rem;">${t('Logout')}</a>
             `;
             if (user.impersonation && user.impersonation.active) {

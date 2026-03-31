@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - AACSB Accreditation</title>
+    <link rel="stylesheet" href="/aacsb/static/css/style.css">
+    <script src="/aacsb/static/js/i18n.js"></script>
+    <style>
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+        .dash-card {
+            background: white;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        .dash-card-header {
+            background: var(--primary);
+            color: white;
+            padding: 1rem 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+        .dash-card-body {
+            padding: 0;
+        }
+        .dash-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1.25rem;
+            border-bottom: 1px solid var(--border);
+            text-decoration: none;
+            color: inherit;
+            transition: background 0.15s;
+        }
+        .dash-item:last-child {
+            border-bottom: none;
+        }
+        .dash-item:hover {
+            background: #f8fafc;
+        }
+        .dash-item-name {
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        .dash-item-sub {
+            font-size: 0.775rem;
+            color: var(--secondary);
+            margin-top: 0.1rem;
+        }
+        .dash-item-badge {
+            font-size: 0.75rem;
+            background: var(--light);
+            color: var(--secondary);
+            padding: 0.15rem 0.5rem;
+            border-radius: 12px;
+            white-space: nowrap;
+            flex-shrink: 0;
+            margin-left: 0.75rem;
+        }
+        .dash-empty {
+            padding: 1.5rem 1.25rem;
+            color: var(--secondary);
+            font-size: 0.875rem;
+            text-align: center;
+        }
+        .pub-summary {
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .pub-remaining {
+            font-size: 0.875rem;
+        }
+        .pub-remaining.none {
+            color: var(--success);
+            font-weight: 500;
+        }
+        .nav-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+        .nav-card {
+            background: white;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            padding: 1.5rem 1.25rem;
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            transition: box-shadow 0.15s, border-color 0.15s;
+        }
+        .nav-card:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border-color: var(--primary);
+        }
+        .nav-card-icon {
+            font-size: 1.6rem;
+            line-height: 1;
+        }
+        .nav-card-title {
+            font-weight: 600;
+            font-size: 1rem;
+            color: var(--primary);
+        }
+        .nav-card-desc {
+            font-size: 0.8rem;
+            color: var(--secondary);
+        }
+    </style>
+</head>
+<body>
+    <div id="impersonation-banner" style="display:none; background:#92400e; color:white; padding:0.5rem 1.5rem; font-size:0.875rem; gap:0.75rem; align-items:center;">
+        <span data-i18n="Viewing as:">Viewing as:</span>
+        <strong id="impersonating-name"></strong>
+        <button onclick="stopImpersonation()" style="margin-left:0.5rem; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.4); color:white; padding:0.15rem 0.75rem; border-radius:4px; cursor:pointer; font-size:0.8rem;" data-i18n="Stop Viewing As">Stop Viewing As</button>
+    </div>
+    <nav class="nav">
+        <div class="container">
+            <a href="/aacsb/dashboard" class="nav-brand">AACSB Accreditation</a>
+            <ul class="nav-links">
+                <li><a href="/aacsb/aol">AOL</a></li>
+                <li><a href="/aacsb/aol/courses" data-i18n="Courses">Courses</a></li>
+                <li><a href="/aacsb/research" data-i18n="Research">Research</a></li>
+                <li><a href="/aacsb/qualifications" data-i18n="Qualifications">Qualifications</a></li>
+                <li><a href="/aacsb/admin" data-i18n="Admin">Admin</a></li>
+            </ul>
+            <div class="nav-user" id="nav-user"><span data-i18n="Loading...">Loading...</span></div>
+            <select id="lang-switcher" onchange="i18n.setLang(this.value)" style="margin-left:0.5rem; padding:0.25rem 0.5rem; border:1px solid rgba(255,255,255,0.3); border-radius:4px; font-size:0.875rem; background:#1e40af; color:white;">
+                <option value="en">EN</option>
+                <option value="no">NO</option>
+            </select>
+        </div>
+    </nav>
+
+    <header class="page-header">
+        <div class="container">
+            <h1 class="page-title" id="welcome-title" data-i18n="Dashboard">Dashboard</h1>
+            <p class="page-subtitle" id="welcome-subtitle"></p>
+        </div>
+    </header>
+
+    <main class="container" style="padding-bottom: 3rem;">
+        <div id="dashboard-content">
+            <div class="loading"><div class="spinner"></div></div>
+        </div>
+    </main>
+
+    <script src="/aacsb/static/aol/js/api.js"></script>
+    <script>
+        const { t } = i18n;
+        const locName = obj => i18n.getLang() === 'no'
+            ? (obj.name_no || obj.name_eng)
+            : (obj.name_eng || obj.name_no);
+
+        async function stopImpersonation() {
+            await fetch('/aacsb/api/admin/stop-impersonation', { method: 'POST', credentials: 'include' });
+            location.reload();
+        }
+
+        async function init() {
+            await i18n.init();
+
+            let user;
+            try {
+                user = await api.getCurrentUser();
+            } catch {
+                window.location.href = '/aacsb/login';
+                return;
+            }
+
+            // Nav user
+            document.getElementById('nav-user').innerHTML = `
+                <span>${user.firstname} ${user.lastname}</span>
+                <a href="/aacsb/settings" class="btn btn-sm btn-outline" style="color:white; border-color:rgba(255,255,255,0.3);">${t('Settings')}</a>
+                <button onclick="api.logout().then(()=>location.href='/aacsb/login')" class="btn btn-sm btn-outline" style="color:white; border-color:rgba(255,255,255,0.3);">${t('Logout')}</button>
+            `;
+
+            if (user.impersonation && user.impersonation.active) {
+                const banner = document.getElementById('impersonation-banner');
+                document.getElementById('impersonating-name').textContent = user.impersonation.viewing_as.name;
+                banner.style.display = 'flex';
+            }
+
+            // Set lang switcher
+            document.getElementById('lang-switcher').value = i18n.getLang();
+
+            document.getElementById('welcome-subtitle').textContent =
+                `${user.firstname} ${user.lastname}`;
+
+            // Load dashboard data (fast, DB-only)
+            let dashData = { coordinator_courses: [], programme_roles: [], has_researcher_id: false, publications_classified: 0 };
+            try {
+                dashData = await api.request('/dashboard');
+            } catch (e) {
+                console.error('Dashboard data failed', e);
+            }
+
+            renderDashboard(user, dashData);
+
+            if (dashData.has_researcher_id) {
+                loadPublicationStats(dashData.publications_classified);
+            }
+        }
+
+        function renderDashboard(user, data) {
+            const hasCourses = data.coordinator_courses.length > 0;
+            const hasProgrammes = data.programme_roles.length > 0;
+            const hasResearcher = data.has_researcher_id;
+            const isAdmin = user.roles && (user.roles.includes('system_admin') || user.roles.includes('admin_staff'));
+
+            let html = '';
+
+            if (hasCourses || hasProgrammes || hasResearcher) {
+                html += '<div class="dashboard-grid">';
+
+                if (hasCourses) {
+                    html += `
+                    <div class="dash-card">
+                        <div class="dash-card-header">
+                            <span>&#128218;</span>
+                            <span>${t('My Courses')}</span>
+                        </div>
+                        <div class="dash-card-body">
+                            ${data.coordinator_courses.map(c => `
+                            <a href="/aacsb/aol/course/${c.id}" class="dash-item">
+                                <div>
+                                    <div class="dash-item-name">${c.course_code}</div>
+                                    <div class="dash-item-sub">${locName(c)}</div>
+                                </div>
+                                <span class="dash-item-badge">${c.ects} ECTS</span>
+                            </a>`).join('')}
+                        </div>
+                    </div>`;
+                }
+
+                if (hasProgrammes) {
+                    html += `
+                    <div class="dash-card">
+                        <div class="dash-card-header">
+                            <span>&#127979;</span>
+                            <span>${t('My Study Programmes')}</span>
+                        </div>
+                        <div class="dash-card-body">
+                            ${data.programme_roles.map(pr => `
+                            <a href="/aacsb/aol/programme/${pr.programme_id}" class="dash-item">
+                                <div>
+                                    <div class="dash-item-name">${pr.programme_code}</div>
+                                    <div class="dash-item-sub">${locName(pr)}</div>
+                                </div>
+                                <span class="dash-item-badge">${t(pr.role) || pr.role}</span>
+                            </a>`).join('')}
+                        </div>
+                    </div>`;
+                }
+
+                if (hasResearcher) {
+                    html += `
+                    <div class="dash-card">
+                        <div class="dash-card-header">
+                            <span>&#128196;</span>
+                            <span>${t('My Publications')}</span>
+                        </div>
+                        <div class="dash-card-body pub-summary" id="pub-card-body">
+                            <div class="loading" style="padding:0.5rem 0;"><div class="spinner"></div></div>
+                        </div>
+                    </div>`;
+                }
+
+                html += '</div>';
+            }
+
+            // Navigation cards — always show all sections
+            html += `
+            <h2 style="margin-top:2.5rem; font-size:1rem; color:var(--secondary); font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">${t('Sections')}</h2>
+            <div class="nav-cards">
+                <a href="/aacsb/aol" class="nav-card">
+                    <div class="nav-card-icon">&#127891;</div>
+                    <div class="nav-card-title">AOL</div>
+                    <div class="nav-card-desc">${t('Assurance of Learning — study programmes and learning goals')}</div>
+                </a>
+                <a href="/aacsb/aol/courses" class="nav-card">
+                    <div class="nav-card-icon">&#128218;</div>
+                    <div class="nav-card-title">${t('Courses')}</div>
+                    <div class="nav-card-desc">${t('Course list and matrix mappings')}</div>
+                </a>
+                <a href="/aacsb/research" class="nav-card">
+                    <div class="nav-card-icon">&#128196;</div>
+                    <div class="nav-card-title">${t('Research')}</div>
+                    <div class="nav-card-desc">${t('Intellectual contributions and publication classification')}</div>
+                </a>
+                <a href="/aacsb/qualifications" class="nav-card">
+                    <div class="nav-card-icon">&#127942;</div>
+                    <div class="nav-card-title">${t('Qualifications')}</div>
+                    <div class="nav-card-desc">${t('Faculty qualification status overview')}</div>
+                </a>
+                ${isAdmin ? `<a href="/aacsb/admin" class="nav-card">
+                    <div class="nav-card-icon">&#9881;&#65039;</div>
+                    <div class="nav-card-title">${t('Admin')}</div>
+                    <div class="nav-card-desc">${t('System administration and user management')}</div>
+                </a>` : ''}
+            </div>`;
+
+            document.getElementById('dashboard-content').innerHTML = html;
+        }
+
+
+        async function loadPublicationStats(classifiedInDb) {
+            const body = document.getElementById('pub-card-body');
+            if (!body) return;
+            try {
+                const status = await api.request('/research/my-status');
+                const total = status.summary.total_contributions;
+                const classified = status.summary.categorized_contributions;
+                const unclassified = total - classified;
+                const pct = total > 0 ? Math.round(classified / total * 100) : 100;
+
+                let html = '';
+                if (status.nva_error) {
+                    // NVA unavailable — show DB count only
+                    html = `
+                        <div class="pub-remaining">${classifiedInDb} ${t('publications classified in database')}</div>
+                        <div style="font-size:0.8rem;color:var(--secondary);">${t('NVA unavailable — total count unknown')}</div>
+                        <a href="/aacsb/qualifications" style="font-size:0.875rem;color:var(--primary);">${t('Go to Qualifications')} &rarr;</a>`;
+                } else {
+                    const barColor = unclassified === 0 ? 'var(--success)' : 'var(--primary)';
+                    html = `
+                        <div style="display:flex;align-items:center;gap:0.75rem;">
+                            <div style="flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden;">
+                                <div style="width:${pct}%;height:100%;background:${barColor};border-radius:4px;"></div>
+                            </div>
+                            <span style="font-size:0.8rem;color:var(--secondary);white-space:nowrap;">${classified} / ${total}</span>
+                        </div>
+                        <div class="pub-remaining ${unclassified === 0 ? 'none' : ''}">
+                            ${unclassified === 0
+                                ? t('All publications classified')
+                                : `${unclassified} ${t('remaining to classify')}`}
+                        </div>
+                        <a href="/aacsb/qualifications" style="font-size:0.875rem;color:var(--primary);">${t('Go to Qualifications')} &rarr;</a>`;
+                }
+                body.innerHTML = html;
+            } catch (e) {
+                body.innerHTML = `
+                    <div class="pub-remaining">${classifiedInDb} ${t('publications classified in database')}</div>
+                    <a href="/aacsb/qualifications" style="font-size:0.875rem;color:var(--primary);">${t('Go to Qualifications')} &rarr;</a>`;
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
