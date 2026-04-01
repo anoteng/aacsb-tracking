@@ -1,6 +1,7 @@
 from .user import User, Role, UserRole, UserProgrammeRole, Session, AuthToken, FacultyCategory
 from .programme import StudyProgramme, Course, ProgrammeCourse, CourseCoordinator
 from .aol import (
+    AcadYear,
     LearningGoal,
     GoalCategory,
     GoalCourseMatrix,
@@ -48,6 +49,7 @@ __all__ = [
     "ProgrammeCourse",
     "CourseCoordinator",
     # AOL models
+    "AcadYear",
     "LearningGoal",
     "GoalCategory",
     "GoalCourseMatrix",

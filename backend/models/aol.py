@@ -109,7 +109,9 @@ class LearningGoal(Base):
     valid_to = Column(DateTime)
     goal_category = Column(Integer, ForeignKey("goal_categories.id"), nullable=False)
     programme_id = Column(Integer, ForeignKey("study_programme.id"), nullable=False)
-    is_measured = Column(Boolean, default=False)
+    is_measured = Column(Boolean, default=False)  # legacy — use measure_direct/measure_indirect
+    measure_direct = Column(Boolean, nullable=False, default=False)
+    measure_indirect = Column(Boolean, nullable=False, default=False)
     target_percentage = Column(Numeric(5, 2), default=80.00)
     sort_order = Column(Integer, nullable=False, default=0)
     archived = Column(Boolean, nullable=False, default=False)
@@ -193,6 +195,24 @@ class RubricTrait(Base):
     # Relationships
     rubric = relationship("Rubric", back_populates="traits")
     results = relationship("AssessmentResult", back_populates="trait")
+
+
+class AcadYear(Base):
+    __tablename__ = "acad_year"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(16), nullable=False)
+    start_date = Column(Date)
+    end_date = Column(Date)
+
+
+class Semester(Base):
+    __tablename__ = "semester"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    rank = Column(Integer)
+    name = Column(String(28), nullable=False)
+    calendar_rank = Column(Integer)
 
 
 class Assessment(Base):

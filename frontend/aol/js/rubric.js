@@ -406,7 +406,7 @@ class RubricComponent {
                         <div class="form-group">
                             <label class="form-label">Academic Year</label>
                             <select id="assessment-year" class="form-select">
-                                <option value="1">2024/2025</option>
+                                <option value="">Loading...</option>
                             </select>
                         </div>
                     </div>
@@ -416,9 +416,29 @@ class RubricComponent {
                     </div>
                     <h4 class="mb-1">Results per Trait</h4>
                     <p class="text-sm text-muted mb-2">Enter the number of students at each performance level.</p>
-                    ${rubric.traits.map(trait => `
+                    ${rubric.traits.map(trait => {
+                        const hasLevelDesc = trait.level_does_not_meet || trait.level_meets || trait.level_exceeds;
+                        return `
                         <div class="card mb-1" data-trait="${trait.id}">
-                            <strong>${trait.name}</strong>
+                            <div class="flex-between mb-0">
+                                <div>
+                                    <strong>${trait.name}</strong>
+                                    ${trait.description ? `<p class="text-sm text-muted mb-0" style="margin-top:0.15rem;">${trait.description}</p>` : ''}
+                                </div>
+                                ${hasLevelDesc ? `
+                                <button type="button" class="btn btn-sm btn-outline" style="white-space:nowrap;align-self:flex-start;"
+                                    onclick="var d=this.closest('[data-trait]').querySelector('.level-descriptions');d.classList.toggle('hidden');this.textContent=d.classList.contains('hidden')?'Show descriptions':'Hide descriptions'">
+                                    Show descriptions
+                                </button>` : ''}
+                            </div>
+                            ${hasLevelDesc ? `
+                            <div class="level-descriptions hidden mt-1 mb-1">
+                                <div class="grid grid-3" style="gap:0.5rem;">
+                                    <div class="text-sm">${trait.level_does_not_meet ? `<span class="text-danger" style="font-weight:500;">Does Not Meet:</span> ${trait.level_does_not_meet}` : ''}</div>
+                                    <div class="text-sm">${trait.level_meets ? `<span class="text-warning" style="font-weight:500;">Meets:</span> ${trait.level_meets}` : ''}</div>
+                                    <div class="text-sm">${trait.level_exceeds ? `<span class="text-success" style="font-weight:500;">Exceeds:</span> ${trait.level_exceeds}` : ''}</div>
+                                </div>
+                            </div>` : ''}
                             <div class="grid grid-3 mt-1">
                                 <div class="form-group">
                                     <label class="form-label text-danger">Does Not Meet</label>
@@ -433,8 +453,8 @@ class RubricComponent {
                                     <input type="number" class="form-input trait-exceeds" min="0" value="0">
                                 </div>
                             </div>
-                        </div>
-                    `).join('')}
+                        </div>`;
+                    }).join('')}
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
@@ -445,6 +465,21 @@ class RubricComponent {
 
         document.body.appendChild(modal);
         requestAnimationFrame(() => modal.classList.add('active'));
+
+        // Populate academic years
+        api.getAcademicYears().then(years => {
+            const sel = document.getElementById('assessment-year');
+            const currentYearStart = new Date().getFullYear();
+            // Default to current academic year (July–June)
+            const defaultName = new Date().getMonth() >= 6
+                ? `${String(currentYearStart).slice(2)}/${String(currentYearStart + 1).slice(2)}`
+                : `${String(currentYearStart - 1).slice(2)}/${String(currentYearStart).slice(2)}`;
+            sel.innerHTML = years.map(y =>
+                `<option value="${y.id}" ${y.name === defaultName ? 'selected' : ''}>${y.name}</option>`
+            ).join('');
+        }).catch(() => {
+            document.getElementById('assessment-year').innerHTML = '<option value="">Failed to load years</option>';
+        });
 
         // Course search
         const searchInput = document.getElementById('assessment-course-search');

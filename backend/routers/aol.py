@@ -12,6 +12,7 @@ from models import (
     User,
     UserProgrammeRole,
     Role,
+    AcadYear,
     StudyProgramme,
     Course,
     ProgrammeCourse,
@@ -78,7 +79,8 @@ class LearningGoalCreate(BaseModel):
     goal_no: str | None = None
     goal_eng: str | None = None
     goal_category: int
-    is_measured: bool = False
+    measure_direct: bool = False
+    measure_indirect: bool = False
     target_percentage: float = 80.0
 
 
@@ -86,7 +88,8 @@ class LearningGoalUpdate(BaseModel):
     goal_no: str | None = None
     goal_eng: str | None = None
     goal_category: int | None = None
-    is_measured: bool | None = None
+    measure_direct: bool | None = None
+    measure_indirect: bool | None = None
     target_percentage: float | None = None
     revision_type: Literal["minor", "major"] = "minor"
 
@@ -97,7 +100,8 @@ class LearningGoalResponse(BaseModel):
     goal_eng: str | None
     category: GoalCategoryResponse
     programme_id: int
-    is_measured: bool
+    measure_direct: bool = False
+    measure_indirect: bool = False
     target_percentage: float
     assigned_staff: list[dict] = []
     sort_order: int = 0
@@ -427,7 +431,7 @@ async def list_goals(
                     id=g.category.id, name_no=g.category.name_no, name_eng=g.category.name_eng
                 ),
                 programme_id=g.programme_id,
-                is_measured=g.is_measured,
+                measure_direct=g.measure_direct, measure_indirect=g.measure_indirect,
                 target_percentage=float(g.target_percentage) if g.target_percentage else 80.0,
                 assigned_staff=assigned,
                 sort_order=g.sort_order,
@@ -468,7 +472,7 @@ async def create_goal(
         goal_eng=request.goal_eng,
         goal_category=request.goal_category,
         programme_id=programme_id,
-        is_measured=request.is_measured,
+        measure_direct=request.measure_direct, measure_indirect=request.measure_indirect,
         target_percentage=request.target_percentage,
         sort_order=max_order + 1,
     )
@@ -482,7 +486,7 @@ async def create_goal(
         goal_eng=goal.goal_eng,
         category=GoalCategoryResponse(id=cat.id, name_no=cat.name_no, name_eng=cat.name_eng),
         programme_id=goal.programme_id,
-        is_measured=goal.is_measured,
+        measure_direct=goal.measure_direct, measure_indirect=goal.measure_indirect,
         target_percentage=float(goal.target_percentage) if goal.target_percentage else 80.0,
         assigned_staff=[],
         sort_order=goal.sort_order,
@@ -511,7 +515,8 @@ async def update_goal(
             goal_eng=request.goal_eng if request.goal_eng is not None else goal.goal_eng,
             goal_category=request.goal_category if request.goal_category is not None else goal.goal_category,
             programme_id=goal.programme_id,
-            is_measured=request.is_measured if request.is_measured is not None else goal.is_measured,
+            measure_direct=request.measure_direct if request.measure_direct is not None else goal.measure_direct,
+            measure_indirect=request.measure_indirect if request.measure_indirect is not None else goal.measure_indirect,
             target_percentage=request.target_percentage if request.target_percentage is not None else goal.target_percentage,
             sort_order=goal.sort_order,
         )
@@ -531,7 +536,7 @@ async def update_goal(
             goal_eng=new_goal.goal_eng,
             category=GoalCategoryResponse(id=cat.id, name_no=cat.name_no, name_eng=cat.name_eng),
             programme_id=new_goal.programme_id,
-            is_measured=new_goal.is_measured,
+            measure_direct=new_goal.measure_direct, measure_indirect=new_goal.measure_indirect,
             target_percentage=float(new_goal.target_percentage) if new_goal.target_percentage else 80.0,
             assigned_staff=[],
             sort_order=new_goal.sort_order,
@@ -544,8 +549,10 @@ async def update_goal(
         goal.goal_eng = request.goal_eng
     if request.goal_category is not None:
         goal.goal_category = request.goal_category
-    if request.is_measured is not None:
-        goal.is_measured = request.is_measured
+    if request.measure_direct is not None:
+        goal.measure_direct = request.measure_direct
+    if request.measure_indirect is not None:
+        goal.measure_indirect = request.measure_indirect
     if request.target_percentage is not None:
         goal.target_percentage = request.target_percentage
 
@@ -560,7 +567,7 @@ async def update_goal(
             id=goal.category.id, name_no=goal.category.name_no, name_eng=goal.category.name_eng
         ),
         programme_id=goal.programme_id,
-        is_measured=goal.is_measured,
+        measure_direct=goal.measure_direct, measure_indirect=goal.measure_indirect,
         target_percentage=float(goal.target_percentage) if goal.target_percentage else 80.0,
         assigned_staff=[
             {"user_id": a.user_id, "name": f"{a.user.firstname} {a.user.lastname}"}
@@ -921,6 +928,25 @@ async def update_matrix_entry(
 # ============================================
 # Lookup Tables (Methods, Technologies)
 # ============================================
+
+@router.get("/academic-years")
+async def get_academic_years(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Return academic years from 6 years ago through 6 years ahead, newest first."""
+    from datetime import date
+    current_year = date.today().year
+    start = date(current_year - 6, 7, 1)
+    end = date(current_year + 6, 7, 1)
+    years = (
+        db.query(AcadYear)
+        .filter(AcadYear.start_date >= start, AcadYear.start_date < end)
+        .order_by(AcadYear.start_date.desc())
+        .all()
+    )
+    return [{"id": y.id, "name": y.name} for y in years]
+
 
 @router.get("/methods/learning")
 async def get_learning_methods(

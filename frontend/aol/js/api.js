@@ -87,6 +87,10 @@ class ApiClient {
         return this.request(`/aol/goals/${goalId}/unarchive`, { method: 'POST' });
     }
 
+    async getAcademicYears() {
+        return this.request('/aol/academic-years');
+    }
+
     async reorderGoals(programmeId, items) {
         return this.request(`/aol/programmes/${programmeId}/goals/reorder`, {
             method: 'PUT',

@@ -308,7 +308,7 @@
                                                 <button class="btn btn-sm btn-outline" style="padding:0.1rem 0.35rem;" ${idx === catGoals.length - 1 ? 'disabled' : ''} onclick="moveGoal(${goal.id}, 1, ${g.category.id})" title="${t('Move down')}">▼</button>
                                             </td>` : ''}
                                             <td>${goal.goal_eng || goal.goal_no}</td>
-                                            <td>${goal.is_measured ? `<span class="text-success">${t('Yes')}</span>` : `<span class="text-muted">${t('No')}</span>`}</td>
+                                            <td>${goal.measure_direct && goal.measure_indirect ? `<span class="text-success">${t('Direct + Indirect')}</span>` : goal.measure_direct ? `<span class="text-success">${t('Direct')}</span>` : goal.measure_indirect ? `<span class="text-success">${t('Indirect')}</span>` : `<span class="text-muted">—</span>`}</td>
                                             <td>${goal.target_percentage}%</td>
                                             <td>${goal.assigned_staff.map(s => s.name).join(', ') || '-'}</td>
                                             <td class="text-right" style="white-space:nowrap">
@@ -516,10 +516,11 @@
                             <textarea id="goal-no" class="form-textarea"></textarea>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">
-                                <input type="checkbox" id="goal-measured">
-                                ${t('This goal is measured')}
-                            </label>
+                            <label class="form-label">${t('Measurement')}</label>
+                            <div style="display:flex; gap:1.25rem;">
+                                <label style="cursor:pointer"><input type="checkbox" id="goal-direct"> ${t('Direct (course assessments)')}</label>
+                                <label style="cursor:pointer"><input type="checkbox" id="goal-indirect"> ${t('Indirect (surveys etc.)')}</label>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label class="form-label">${t('Target % (meets or exceeds expectations)')}</label>
@@ -541,7 +542,8 @@
                     goal_category: parseInt(document.getElementById('goal-category').value),
                     goal_eng: document.getElementById('goal-eng').value,
                     goal_no: document.getElementById('goal-no').value,
-                    is_measured: document.getElementById('goal-measured').checked,
+                    measure_direct: document.getElementById('goal-direct').checked,
+                    measure_indirect: document.getElementById('goal-indirect').checked,
                     target_percentage: parseFloat(document.getElementById('goal-target').value),
                 };
 
@@ -588,10 +590,11 @@
                             <textarea id="goal-no" class="form-textarea">${goal.goal_no || ''}</textarea>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">
-                                <input type="checkbox" id="goal-measured" ${goal.is_measured ? 'checked' : ''}>
-                                ${t('This goal is measured')}
-                            </label>
+                            <label class="form-label">${t('Measurement')}</label>
+                            <div style="display:flex; gap:1.25rem;">
+                                <label style="cursor:pointer"><input type="checkbox" id="goal-direct" ${goal.measure_direct ? 'checked' : ''}> ${t('Direct (course assessments)')}</label>
+                                <label style="cursor:pointer"><input type="checkbox" id="goal-indirect" ${goal.measure_indirect ? 'checked' : ''}> ${t('Indirect (surveys etc.)')}</label>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label class="form-label">${t('Target % (meets or exceeds expectations)')}</label>
@@ -633,7 +636,8 @@
                     goal_category: parseInt(document.getElementById('goal-category').value),
                     goal_eng: document.getElementById('goal-eng').value,
                     goal_no: document.getElementById('goal-no').value,
-                    is_measured: document.getElementById('goal-measured').checked,
+                    measure_direct: document.getElementById('goal-direct').checked,
+                    measure_indirect: document.getElementById('goal-indirect').checked,
                     target_percentage: parseFloat(document.getElementById('goal-target').value),
                     revision_type: revisionType,
                 };

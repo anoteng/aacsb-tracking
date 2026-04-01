@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     db_port: int = 3306
     db_name: str = "aol"
     db_user: str = "aol"
-    db_password: str = "yamnZ@2iFdE*OL2hd16q"
+    db_password: str = ""
 
     # Authentication
     secret_key: str = "change-this-in-production-use-openssl-rand-hex-32"
