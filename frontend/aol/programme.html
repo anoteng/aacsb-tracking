@@ -1011,11 +1011,10 @@
                             ${row.courses.join(', ') || '—'}
                         </td>
                         <td style="vertical-align:top; padding:0.5rem 0.75rem; font-size:0.875rem;">
-                            ${row.teaching_periods.join(', ') || '—'}
+                            ${row.scheduled_years.length ? row.scheduled_years.join(', ') : '—'}
+                            ${row.teaching_periods.length ? `<br><span class="text-muted">${row.teaching_periods.join(', ')}</span>` : ''}
                         </td>
                         <td style="vertical-align:top; padding:0.5rem 0.75rem;">${resultsHtml}</td>
-                        <td style="vertical-align:top; padding:0.5rem 0.75rem;"></td>
-                        <td style="vertical-align:top; padding:0.5rem 0.75rem;"></td>
                     </tr>`;
                 });
             }).join('');
@@ -1032,8 +1031,6 @@
                                 <th style="padding:0.5rem 0.75rem; text-align:left; border:1px solid #d1d5db; min-width:100px;">${t('Where Assessed')}</th>
                                 <th style="padding:0.5rem 0.75rem; text-align:left; border:1px solid #d1d5db; min-width:110px;">${t('When Assessed')}</th>
                                 <th style="padding:0.5rem 0.75rem; text-align:left; border:1px solid #d1d5db; min-width:180px;">${t('Results')}</th>
-                                <th style="padding:0.5rem 0.75rem; text-align:left; border:1px solid #d1d5db; min-width:150px;">${t('Curricular Improvements')}</th>
-                                <th style="padding:0.5rem 0.75rem; text-align:left; border:1px solid #d1d5db; min-width:110px;">${t('Date Changes Made')}</th>
                             </tr>
                         </thead>
                         <tbody>${tbodyRows}</tbody>

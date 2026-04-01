@@ -2034,6 +2034,20 @@ async def get_programme_results(
     for m in mappings:
         mappings_by_goal.setdefault(m.goal_id, []).append(m)
 
+    # Load measurement schedule (planned years) for all goals
+    schedules = (
+        db.query(MeasurementSchedule)
+        .options(joinedload(MeasurementSchedule.academic_year))
+        .filter(MeasurementSchedule.goal_id.in_(goal_ids))
+        .order_by(MeasurementSchedule.academic_year_id)
+        .all()
+    ) if goal_ids else []
+
+    scheduled_years_by_goal: dict[int, list[str]] = {}
+    for s in schedules:
+        if s.academic_year:
+            scheduled_years_by_goal.setdefault(s.goal_id, []).append(s.academic_year.name)
+
     result = []
     for goal in goals:
         goal_mappings = mappings_by_goal.get(goal.id, [])
@@ -2043,6 +2057,7 @@ async def get_programme_results(
             for m in goal_mappings
             if m.course_id in pc_by_course and pc_by_course[m.course_id].teaching_period
         ))
+        scheduled_years = scheduled_years_by_goal.get(goal.id, [])
 
         for rubric in sorted(goal.rubrics, key=lambda r: r.id):
             if not rubric.active:
@@ -2073,6 +2088,7 @@ async def get_programme_results(
                 "measure_type": rubric.measure_type,
                 "courses": course_codes,
                 "teaching_periods": teaching_periods,
+                "scheduled_years": scheduled_years,
                 "assessments": rubric_assessments,
             })
 
