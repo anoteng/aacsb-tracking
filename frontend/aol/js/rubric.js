@@ -455,8 +455,26 @@ class RubricComponent {
                         <label class="form-label">Notes</label>
                         <textarea id="assessment-notes" class="form-textarea" rows="2"></textarea>
                     </div>
+                    <h4 class="mb-1">Overall Result</h4>
+                    <p class="text-sm text-muted mb-2">Enter the overall number of students at each performance level for this assessment.</p>
+                    <div class="card mb-2" style="background:#f8fafc;">
+                        <div class="grid grid-3">
+                            <div class="form-group">
+                                <label class="form-label text-danger">Does Not Meet</label>
+                                <input type="number" id="overall-dnm" class="form-input" min="0" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label text-warning">Meets</label>
+                                <input type="number" id="overall-meets" class="form-input" min="0" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label text-success">Exceeds</label>
+                                <input type="number" id="overall-exceeds" class="form-input" min="0" value="0">
+                            </div>
+                        </div>
+                    </div>
                     <h4 class="mb-1">Results per Trait</h4>
-                    <p class="text-sm text-muted mb-2">Enter the number of students at each performance level.</p>
+                    <p class="text-sm text-muted mb-2">Enter the number of students at each performance level per trait (optional).</p>
                     ${rubric.traits.map(trait => {
                         const hasLevelDesc = trait.level_does_not_meet || trait.level_meets || trait.level_exceeds;
                         return `
@@ -566,6 +584,9 @@ class RubricComponent {
                     rubric_id: rubricId,
                     course_id: parseInt(courseId),
                     academic_year_id: parseInt(document.getElementById('assessment-year').value),
+                    overall_dnm: parseInt(document.getElementById('overall-dnm').value) || 0,
+                    overall_meets: parseInt(document.getElementById('overall-meets').value) || 0,
+                    overall_exceeds: parseInt(document.getElementById('overall-exceeds').value) || 0,
                     notes: document.getElementById('assessment-notes').value,
                 });
 

@@ -226,6 +226,9 @@ class AssessmentCreate(BaseModel):
     semester_id: int | None = None
     assessment_date: str | None = None
     total_students: int = 0
+    overall_dnm: int = 0
+    overall_meets: int = 0
+    overall_exceeds: int = 0
     notes: str | None = None
 
 
@@ -257,6 +260,9 @@ class AssessmentResponse(BaseModel):
     semester_id: int | None
     assessment_date: str | None
     total_students: int
+    overall_dnm: int = 0
+    overall_meets: int = 0
+    overall_exceeds: int = 0
     notes: str | None
     results: list[AssessmentResultResponse] = []
 
@@ -300,6 +306,13 @@ def is_programme_admin(user: User, programme_id: int, db: Session) -> bool:
         )
         .first() is not None
     )
+
+
+def can_enter_assessment(user: User, rubric: "Rubric", course_id: int, db: Session) -> bool:
+    """Authorize assessment data entry: goal editors OR the course coordinator."""
+    if can_edit_goal(user, rubric.goal, db):
+        return True
+    return is_course_coordinator(user, course_id, db)
 
 
 def check_programme_access(request: Request, programme_id: int, db: Session, user: User) -> None:
@@ -1000,7 +1013,7 @@ async def get_programme_schedule(
         return []
     entries = (
         db.query(MeasurementSchedule)
-        .options(joinedload(MeasurementSchedule.academic_year), joinedload(MeasurementSchedule.semester))
+        .options(joinedload(MeasurementSchedule.academic_year))
         .filter(MeasurementSchedule.goal_id.in_(goal_ids))
         .all()
     )
@@ -1622,6 +1635,9 @@ async def list_assessments(
             semester_id=a.semester_id,
             assessment_date=str(a.assessment_date) if a.assessment_date else None,
             total_students=a.total_students,
+            overall_dnm=a.overall_dnm or 0,
+            overall_meets=a.overall_meets or 0,
+            overall_exceeds=a.overall_exceeds or 0,
             notes=a.notes,
             results=[
                 AssessmentResultResponse(
@@ -1650,7 +1666,7 @@ async def create_assessment(
     if not rubric:
         raise HTTPException(status_code=404, detail="Rubric not found")
 
-    if not can_edit_goal(user, rubric.goal, db):
+    if not can_enter_assessment(user, rubric, request.course_id, db):
         raise HTTPException(status_code=403, detail="Not authorized to create assessment for this goal")
 
     course = db.query(Course).filter(Course.id == request.course_id).first()
@@ -1664,6 +1680,9 @@ async def create_assessment(
         semester_id=request.semester_id,
         assessment_date=request.assessment_date,
         total_students=request.total_students,
+        overall_dnm=request.overall_dnm,
+        overall_meets=request.overall_meets,
+        overall_exceeds=request.overall_exceeds,
         notes=request.notes,
         created_by=user.uuid,
     )
@@ -1680,6 +1699,9 @@ async def create_assessment(
         semester_id=assessment.semester_id,
         assessment_date=str(assessment.assessment_date) if assessment.assessment_date else None,
         total_students=assessment.total_students,
+        overall_dnm=assessment.overall_dnm or 0,
+        overall_meets=assessment.overall_meets or 0,
+        overall_exceeds=assessment.overall_exceeds or 0,
         notes=assessment.notes,
         results=[],
     )
@@ -1702,7 +1724,7 @@ async def add_assessment_results(
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
 
-    if not can_edit_goal(user, assessment.rubric.goal, db):
+    if not can_enter_assessment(user, assessment.rubric, assessment.course_id, db):
         raise HTTPException(status_code=403, detail="Not authorized to edit this assessment")
 
     for result in results:
