@@ -135,6 +135,7 @@
         let planYears = [];
         let planSemesters = [];
         let planSchedule = [];  // flat list of schedule entries
+        let semesters = [];  // teaching periods from /aol/semesters
 
         async function init() {
             try {
@@ -461,7 +462,10 @@
             container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
             try {
-                courses = await api.getProgrammeCourses(programmeId);
+                [courses, semesters] = await Promise.all([
+                    api.getProgrammeCourses(programmeId),
+                    semesters.length ? Promise.resolve(semesters) : api.getSemesters(),
+                ]);
                 renderCourses();
             } catch (error) {
                 container.innerHTML = `<div class="alert alert-error">${error.message}</div>`;
@@ -481,6 +485,10 @@
                 return;
             }
 
+            const semesterOptions = semesters.map(s =>
+                `<option value="${s.id}">${s.name}</option>`
+            ).join('');
+
             container.innerHTML = `
                 <div class="table-container">
                     <table>
@@ -489,20 +497,53 @@
                                 <th>${t('Code')}</th>
                                 <th>${t('Name')}</th>
                                 <th>ECTS</th>
+                                <th>${t('Teaching Period')}</th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${courses.map(course => `
+                            ${courses.map(course => {
+                                const periodCell = isAdmin()
+                                    ? `<td>
+                                        <select class="form-select form-select-sm" style="min-width:130px;"
+                                            onchange="setTeachingPeriod(${course.id}, this)">
+                                            <option value="">—</option>
+                                            ${semesters.map(s =>
+                                                `<option value="${s.id}" ${course.teaching_period_id === s.id ? 'selected' : ''}>${s.name}</option>`
+                                            ).join('')}
+                                        </select>
+                                       </td>`
+                                    : `<td>${course.teaching_period_name || '—'}</td>`;
+                                return `
                                 <tr>
                                     <td><strong>${course.course_code}</strong></td>
                                     <td>${locName(course) || '-'}</td>
                                     <td>${course.ects}</td>
-                                </tr>
-                            `).join('')}
+                                    ${periodCell}
+                                </tr>`;
+                            }).join('')}
                         </tbody>
                     </table>
                 </div>
             `;
+        }
+
+        async function setTeachingPeriod(courseId, selectEl) {
+            const periodId = selectEl.value ? parseInt(selectEl.value) : null;
+            try {
+                await api.setCourseTeachingPeriod(programmeId, courseId, periodId);
+                const course = courses.find(c => c.id === courseId);
+                if (course) {
+                    course.teaching_period_id = periodId;
+                    course.teaching_period_name = periodId
+                        ? semesters.find(s => s.id === periodId)?.name || null
+                        : null;
+                }
+            } catch (error) {
+                alert(error.message);
+                // Revert select
+                const course = courses.find(c => c.id === courseId);
+                selectEl.value = course?.teaching_period_id || '';
+            }
         }
 
         function showAddGoalModal() {
@@ -755,20 +796,18 @@
             const container = document.getElementById('plan-container');
             container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
             try {
-                const [years, semesters, schedule] = await Promise.all([
+                const [years, schedule] = await Promise.all([
                     api.getAcademicYears(),
-                    api.getSemesters(),
                     api.getProgrammeSchedule(programmeId),
                 ]);
-                // Keep only current year + next 2
+                // Keep current year + next 2, oldest first
                 const today = new Date();
                 const currentYearStart = today.getMonth() >= 7 ? today.getFullYear() : today.getFullYear() - 1;
                 const relevantYearNames = [0, 1, 2].map(offset => {
                     const y = currentYearStart + offset;
                     return `${String(y).slice(2)}/${String(y + 1).slice(2)}`;
                 });
-                planYears = years.filter(y => relevantYearNames.includes(y.name));
-                planSemesters = semesters;
+                planYears = years.filter(y => relevantYearNames.includes(y.name)).reverse();
                 planSchedule = schedule;
                 renderMeasurementPlan();
             } catch (error) {
@@ -785,12 +824,11 @@
                 return;
             }
 
-            // Build schedule lookup: scheduleMap[goal_id][year_id][semester_id] = entry_id
+            // Build schedule lookup: scheduleMap[goal_id][year_id] = entry_id
             const scheduleMap = {};
             planSchedule.forEach(e => {
                 if (!scheduleMap[e.goal_id]) scheduleMap[e.goal_id] = {};
-                if (!scheduleMap[e.goal_id][e.academic_year_id]) scheduleMap[e.goal_id][e.academic_year_id] = {};
-                scheduleMap[e.goal_id][e.academic_year_id][e.semester_id] = e.id;
+                scheduleMap[e.goal_id][e.academic_year_id] = e.id;
             });
 
             // Group goals by category
@@ -798,50 +836,39 @@
             categories.forEach(cat => { grouped[cat.id] = { category: cat, goals: [] }; });
             activeGoals.forEach(g => { if (grouped[g.category.id]) grouped[g.category.id].goals.push(g); });
 
-            // Build header columns: year × semester
-            const cols = [];
-            planYears.forEach(y => {
-                planSemesters.forEach(s => {
-                    cols.push({ yearId: y.id, yearName: y.name, semId: s.id, semName: s.name });
-                });
-            });
-
-            const colHeaders = cols.map(c =>
-                `<th style="text-align:center; font-size:0.75rem; padding:0.3rem 0.4rem; min-width:80px;">
-                    <div style="font-weight:600">${c.yearName}</div>
-                    <div style="font-weight:400; color:#6b7280">${c.semName}</div>
-                </th>`
+            const colHeaders = planYears.map(y =>
+                `<th style="text-align:center; font-size:0.85rem; padding:0.4rem 0.75rem; min-width:90px;">${y.name}</th>`
             ).join('');
 
             const rows = Object.values(grouped)
                 .filter(g => g.goals.length > 0)
                 .map(g => {
                     const catRow = `<tr style="background:#f3f4f6;">
-                        <td colspan="${cols.length + 1}" style="font-weight:600; padding:0.4rem 0.75rem; font-size:0.875rem;">${locName(g.category)}</td>
+                        <td colspan="${planYears.length + 1}" style="font-weight:600; padding:0.4rem 0.75rem; font-size:0.875rem;">${locName(g.category)}</td>
                     </tr>`;
                     const goalRows = g.goals.map(goal => {
-                        const cells = cols.map(c => {
-                            const entryId = scheduleMap[goal.id]?.[c.yearId]?.[c.semId];
+                        const cells = planYears.map(y => {
+                            const entryId = scheduleMap[goal.id]?.[y.id];
                             if (isAdmin()) {
                                 return entryId
                                     ? `<td style="text-align:center; padding:0.25rem;">
-                                        <button class="btn btn-sm" style="background:#d1fae5; color:#065f46; border:1px solid #6ee7b7; min-width:2rem;"
-                                            onclick="toggleSchedule(${goal.id}, ${c.yearId}, ${c.semId}, ${entryId})">✓</button>
+                                        <button class="btn btn-sm" style="background:#d1fae5; color:#065f46; border:1px solid #6ee7b7; min-width:2.5rem;"
+                                            onclick="toggleSchedule(${goal.id}, ${y.id}, ${entryId})">✓</button>
                                        </td>`
                                     : `<td style="text-align:center; padding:0.25rem;">
-                                        <button class="btn btn-sm btn-outline" style="color:#9ca3af; min-width:2rem;"
-                                            onclick="toggleSchedule(${goal.id}, ${c.yearId}, ${c.semId}, null)">+</button>
+                                        <button class="btn btn-sm btn-outline" style="color:#9ca3af; min-width:2.5rem;"
+                                            onclick="toggleSchedule(${goal.id}, ${y.id}, null)">+</button>
                                        </td>`;
                             } else {
-                                return `<td style="text-align:center; padding:0.25rem; color:${entryId ? '#059669' : '#d1d5db'}; font-size:1rem;">
+                                return `<td style="text-align:center; padding:0.25rem; color:${entryId ? '#059669' : '#d1d5db'}; font-size:1.1rem;">
                                     ${entryId ? '✓' : '·'}
                                 </td>`;
                             }
                         }).join('');
                         const goalText = goal.goal_eng || goal.goal_no || '';
                         return `<tr>
-                            <td style="padding:0.4rem 0.75rem; font-size:0.875rem; max-width:380px;">
-                                <span title="${goalText}">${goalText.length > 90 ? goalText.slice(0, 87) + '…' : goalText}</span>
+                            <td style="padding:0.4rem 0.75rem; font-size:0.875rem; max-width:420px;">
+                                <span title="${goalText}">${goalText.length > 100 ? goalText.slice(0, 97) + '…' : goalText}</span>
                             </td>
                             ${cells}
                         </tr>`;
@@ -858,7 +885,7 @@
                     <table style="width:100%; border-collapse:collapse; font-size:0.875rem;">
                         <thead>
                             <tr style="border-bottom:2px solid #e5e7eb;">
-                                <th style="text-align:left; padding:0.5rem 0.75rem; min-width:280px;">${t('Goal')}</th>
+                                <th style="text-align:left; padding:0.5rem 0.75rem; min-width:300px;">${t('Goal')}</th>
                                 ${colHeaders}
                             </tr>
                         </thead>
@@ -868,17 +895,14 @@
             `;
         }
 
-        async function toggleSchedule(goalId, yearId, semId, existingEntryId) {
+        async function toggleSchedule(goalId, yearId, existingEntryId) {
             try {
                 if (existingEntryId) {
                     await api.deleteGoalSchedule(goalId, existingEntryId);
                     planSchedule = planSchedule.filter(e => e.id !== existingEntryId);
                 } else {
-                    const entry = await api.addGoalSchedule(goalId, {
-                        academic_year_id: yearId,
-                        semester_id: semId,
-                    });
-                    planSchedule.push({ id: entry.id, goal_id: goalId, academic_year_id: yearId, semester_id: semId });
+                    const entry = await api.addGoalSchedule(goalId, { academic_year_id: yearId });
+                    planSchedule.push({ id: entry.id, goal_id: goalId, academic_year_id: yearId });
                 }
                 renderMeasurementPlan();
             } catch (error) {

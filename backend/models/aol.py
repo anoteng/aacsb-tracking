@@ -269,7 +269,6 @@ class MeasurementSchedule(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     goal_id = Column(Integer, ForeignKey("learning_goals.id"), nullable=False)
     academic_year_id = Column(Integer, ForeignKey("acad_year.id"), nullable=False)
-    semester_id = Column(Integer, ForeignKey("semester.id"), nullable=False)
     notes = Column(Text)
     created_at = Column(DateTime, server_default=func.now())
     created_by = Column(Integer, ForeignKey("users.uuid"), nullable=True)
@@ -277,4 +276,3 @@ class MeasurementSchedule(Base):
     # Relationships
     goal = relationship("LearningGoal", back_populates="schedule")
     academic_year = relationship("AcadYear")
-    semester = relationship("Semester")

@@ -63,6 +63,8 @@ class CourseResponse(BaseModel):
     name_eng: str | None
     ects: float
     prme_report: bool = False
+    teaching_period_id: int | None = None
+    teaching_period_name: str | None = None
 
     class Config:
         from_attributes = True
@@ -204,7 +206,6 @@ class RubricResponse(BaseModel):
 
 class ScheduleCreate(BaseModel):
     academic_year_id: int
-    semester_id: int
     notes: str | None = None
 
 
@@ -212,8 +213,6 @@ class ScheduleResponse(BaseModel):
     id: int
     academic_year_id: int
     year_name: str
-    semester_id: int
-    semester_name: str
     notes: str | None
 
     class Config:
@@ -1011,8 +1010,6 @@ async def get_programme_schedule(
             "goal_id": e.goal_id,
             "academic_year_id": e.academic_year_id,
             "year_name": e.academic_year.name,
-            "semester_id": e.semester_id,
-            "semester_name": e.semester.name,
             "notes": e.notes,
         }
         for e in entries
@@ -1029,7 +1026,7 @@ async def get_goal_schedule(
     entries = (
         db.query(MeasurementSchedule)
         .filter(MeasurementSchedule.goal_id == goal_id)
-        .order_by(MeasurementSchedule.academic_year_id, MeasurementSchedule.semester_id)
+        .order_by(MeasurementSchedule.academic_year_id)
         .all()
     )
     return [
@@ -1037,8 +1034,6 @@ async def get_goal_schedule(
             id=e.id,
             academic_year_id=e.academic_year_id,
             year_name=e.academic_year.name,
-            semester_id=e.semester_id,
-            semester_name=e.semester.name,
             notes=e.notes,
         )
         for e in entries
@@ -1063,15 +1058,13 @@ async def add_goal_schedule(
     existing = db.query(MeasurementSchedule).filter(
         MeasurementSchedule.goal_id == goal_id,
         MeasurementSchedule.academic_year_id == request.academic_year_id,
-        MeasurementSchedule.semester_id == request.semester_id,
     ).first()
     if existing:
-        raise HTTPException(status_code=409, detail="Already scheduled for this period")
+        raise HTTPException(status_code=409, detail="Already scheduled for this year")
 
     entry = MeasurementSchedule(
         goal_id=goal_id,
         academic_year_id=request.academic_year_id,
-        semester_id=request.semester_id,
         notes=request.notes,
         created_by=user.uuid,
     )
@@ -1083,8 +1076,6 @@ async def add_goal_schedule(
         id=entry.id,
         academic_year_id=entry.academic_year_id,
         year_name=entry.academic_year.name,
-        semester_id=entry.semester_id,
-        semester_name=entry.semester.name,
         notes=entry.notes,
     )
 
@@ -1141,10 +1132,9 @@ async def get_upcoming_measurements(
             joinedload(MeasurementSchedule.goal).joinedload(LearningGoal.programme),
             joinedload(MeasurementSchedule.goal).joinedload(LearningGoal.category),
             joinedload(MeasurementSchedule.academic_year),
-            joinedload(MeasurementSchedule.semester),
         )
         .filter(MeasurementSchedule.academic_year_id.in_(year_ids))
-        .order_by(MeasurementSchedule.academic_year_id, MeasurementSchedule.semester_id)
+        .order_by(MeasurementSchedule.academic_year_id)
         .all()
     )
 
@@ -1155,10 +1145,24 @@ async def get_upcoming_measurements(
         }
         entries = [e for e in entries if e.goal.programme_id in accessible_programme_ids]
 
-    lang = "eng"
     result = []
     for e in entries:
         goal = e.goal
+
+        # Derive teaching periods from assessed courses' ProgrammeCourse records
+        assessed_mappings = db.query(GoalCourseMatrix).filter(
+            GoalCourseMatrix.goal_id == goal.id,
+            GoalCourseMatrix.is_assessed == True,
+        ).all()
+        teaching_periods = []
+        for m in assessed_mappings:
+            pc = db.query(ProgrammeCourse).filter(
+                ProgrammeCourse.course_id == m.course_id,
+                ProgrammeCourse.programme_id == goal.programme_id,
+            ).first()
+            if pc and pc.teaching_period:
+                teaching_periods.append(pc.teaching_period.name)
+
         # Check if an assessment has been recorded for this goal in this year
         has_assessment = db.query(Assessment).join(Rubric).filter(
             Rubric.goal_id == goal.id,
@@ -1175,8 +1179,7 @@ async def get_upcoming_measurements(
             "category_name": goal.category.name_eng or goal.category.name_no,
             "year_id": e.academic_year_id,
             "year_name": e.academic_year.name,
-            "semester_id": e.semester_id,
-            "semester_name": e.semester.name,
+            "teaching_periods": list(dict.fromkeys(teaching_periods)),  # deduplicated, ordered
             "has_assessment": has_assessment,
         })
 
@@ -1745,28 +1748,65 @@ async def list_programme_courses(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    """List all courses in a programme."""
+    """List all courses in a programme, including their teaching period."""
     programme_courses = (
         db.query(ProgrammeCourse)
-        .options(joinedload(ProgrammeCourse.course))
+        .options(joinedload(ProgrammeCourse.course), joinedload(ProgrammeCourse.teaching_period))
         .filter(ProgrammeCourse.programme_id == programme_id)
         .all()
     )
 
-    # Get unique courses
-    courses = list({pc.course.id: pc.course for pc in programme_courses}.values())
+    # Keep the ProgrammeCourse record per course (last one wins if duplicates)
+    pc_by_course = {pc.course.id: pc for pc in programme_courses}
 
     return [
         CourseResponse(
-            id=c.id,
-            course_code=c.course_code,
-            course_version=c.course_version,
-            name_no=c.name_no,
-            name_eng=c.name_eng,
-            ects=float(c.ects),
+            id=pc.course.id,
+            course_code=pc.course.course_code,
+            course_version=pc.course.course_version,
+            name_no=pc.course.name_no,
+            name_eng=pc.course.name_eng,
+            ects=float(pc.course.ects),
+            teaching_period_id=pc.teaching_period_id,
+            teaching_period_name=pc.teaching_period.name if pc.teaching_period else None,
         )
-        for c in sorted(courses, key=lambda x: x.course_code)
+        for pc in sorted(pc_by_course.values(), key=lambda x: x.course.course_code)
     ]
+
+
+@router.put("/programmes/{programme_id}/courses/{course_id}/teaching-period")
+async def set_course_teaching_period(
+    programme_id: int,
+    course_id: int,
+    req: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Set (or clear) the teaching period for a course within a programme."""
+    check_programme_access(req, programme_id, db, user)
+    from pydantic import BaseModel as BM
+    class PeriodUpdate(BM):
+        teaching_period_id: int | None
+
+    body = await req.json()
+    period_id = body.get("teaching_period_id")
+
+    pc = db.query(ProgrammeCourse).filter(
+        ProgrammeCourse.programme_id == programme_id,
+        ProgrammeCourse.course_id == course_id,
+    ).first()
+    if not pc:
+        raise HTTPException(status_code=404, detail="Course not in this programme")
+
+    pc.teaching_period_id = period_id
+    db.commit()
+
+    period_name = None
+    if period_id:
+        sem = db.query(Semester).filter(Semester.id == period_id).first()
+        period_name = sem.name if sem else None
+
+    return {"teaching_period_id": period_id, "teaching_period_name": period_name}
 
 
 class CourseSemesterUpdate(BaseModel):

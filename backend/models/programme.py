@@ -52,10 +52,12 @@ class ProgrammeCourse(Base):
     semester = Column(Integer)
     valid_from = Column(Integer)
     valid_to = Column(Integer)
+    teaching_period_id = Column(Integer, ForeignKey("semester.id"), nullable=True)
 
     # Relationships
     course = relationship("Course", back_populates="programmes")
     programme = relationship("StudyProgramme", back_populates="courses")
+    teaching_period = relationship("Semester", foreign_keys=[teaching_period_id])
 
 
 class CourseCoordinator(Base):

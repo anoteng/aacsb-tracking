@@ -111,6 +111,13 @@ class ApiClient {
         });
     }
 
+    async setCourseTeachingPeriod(programmeId, courseId, teachingPeriodId) {
+        return this.request(`/aol/programmes/${programmeId}/courses/${courseId}/teaching-period`, {
+            method: 'PUT',
+            body: { teaching_period_id: teachingPeriodId },
+        });
+    }
+
     async deleteGoalSchedule(goalId, scheduleId) {
         return this.request(`/aol/goals/${goalId}/schedule/${scheduleId}`, { method: 'DELETE' });
     }
