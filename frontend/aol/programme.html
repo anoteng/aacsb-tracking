@@ -50,6 +50,7 @@
             <button class="tab active" data-tab="goals" data-i18n="Learning Goals">Learning Goals</button>
             <button class="tab" data-tab="matrix" data-i18n="Curriculum Matrix">Curriculum Matrix</button>
             <button class="tab" data-tab="courses" data-i18n="Courses">Courses</button>
+            <button class="tab" data-tab="plan" data-i18n="Measurement Plan">Measurement Plan</button>
         </div>
 
         <!-- Goals Tab -->
@@ -77,6 +78,13 @@
         <!-- Matrix Tab -->
         <div id="tab-matrix" class="tab-content hidden">
             <div id="matrix-container">
+                <div class="loading"><div class="spinner"></div></div>
+            </div>
+        </div>
+
+        <!-- Measurement Plan Tab -->
+        <div id="tab-plan" class="tab-content hidden">
+            <div id="plan-container">
                 <div class="loading"><div class="spinner"></div></div>
             </div>
         </div>
@@ -123,6 +131,10 @@
         let courses = [];
         let matrixComponent = null;
         let showHistory = false;
+        let planLoaded = false;
+        let planYears = [];
+        let planSemesters = [];
+        let planSchedule = [];  // flat list of schedule entries
 
         async function init() {
             try {
@@ -233,6 +245,8 @@
                         matrixComponent.load();
                     } else if (tabName === 'courses' && courses.length === 0) {
                         loadCourses();
+                    } else if (tabName === 'plan' && !planLoaded) {
+                        loadMeasurementPlan();
                     }
                 });
             });
@@ -729,6 +743,146 @@
                 }
             } catch (error) {
                 alert(t('Failed to add course: ') + error.message);
+            }
+        }
+
+        // ============================================
+        // Measurement Plan Tab
+        // ============================================
+
+        async function loadMeasurementPlan() {
+            planLoaded = true;
+            const container = document.getElementById('plan-container');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+            try {
+                const [years, semesters, schedule] = await Promise.all([
+                    api.getAcademicYears(),
+                    api.getSemesters(),
+                    api.getProgrammeSchedule(programmeId),
+                ]);
+                // Keep only current year + next 2
+                const today = new Date();
+                const currentYearStart = today.getMonth() >= 7 ? today.getFullYear() : today.getFullYear() - 1;
+                const relevantYearNames = [0, 1, 2].map(offset => {
+                    const y = currentYearStart + offset;
+                    return `${String(y).slice(2)}/${String(y + 1).slice(2)}`;
+                });
+                planYears = years.filter(y => relevantYearNames.includes(y.name));
+                planSemesters = semesters;
+                planSchedule = schedule;
+                renderMeasurementPlan();
+            } catch (error) {
+                container.innerHTML = `<div class="alert alert-error">${error.message}</div>`;
+            }
+        }
+
+        function renderMeasurementPlan() {
+            const container = document.getElementById('plan-container');
+            const activeGoals = goals.filter(g => !g.archived);
+
+            if (activeGoals.length === 0) {
+                container.innerHTML = `<div class="empty-state"><h3>${t('No active goals')}</h3></div>`;
+                return;
+            }
+
+            // Build schedule lookup: scheduleMap[goal_id][year_id][semester_id] = entry_id
+            const scheduleMap = {};
+            planSchedule.forEach(e => {
+                if (!scheduleMap[e.goal_id]) scheduleMap[e.goal_id] = {};
+                if (!scheduleMap[e.goal_id][e.academic_year_id]) scheduleMap[e.goal_id][e.academic_year_id] = {};
+                scheduleMap[e.goal_id][e.academic_year_id][e.semester_id] = e.id;
+            });
+
+            // Group goals by category
+            const grouped = {};
+            categories.forEach(cat => { grouped[cat.id] = { category: cat, goals: [] }; });
+            activeGoals.forEach(g => { if (grouped[g.category.id]) grouped[g.category.id].goals.push(g); });
+
+            // Build header columns: year × semester
+            const cols = [];
+            planYears.forEach(y => {
+                planSemesters.forEach(s => {
+                    cols.push({ yearId: y.id, yearName: y.name, semId: s.id, semName: s.name });
+                });
+            });
+
+            const colHeaders = cols.map(c =>
+                `<th style="text-align:center; font-size:0.75rem; padding:0.3rem 0.4rem; min-width:80px;">
+                    <div style="font-weight:600">${c.yearName}</div>
+                    <div style="font-weight:400; color:#6b7280">${c.semName}</div>
+                </th>`
+            ).join('');
+
+            const rows = Object.values(grouped)
+                .filter(g => g.goals.length > 0)
+                .map(g => {
+                    const catRow = `<tr style="background:#f3f4f6;">
+                        <td colspan="${cols.length + 1}" style="font-weight:600; padding:0.4rem 0.75rem; font-size:0.875rem;">${locName(g.category)}</td>
+                    </tr>`;
+                    const goalRows = g.goals.map(goal => {
+                        const cells = cols.map(c => {
+                            const entryId = scheduleMap[goal.id]?.[c.yearId]?.[c.semId];
+                            if (isAdmin()) {
+                                return entryId
+                                    ? `<td style="text-align:center; padding:0.25rem;">
+                                        <button class="btn btn-sm" style="background:#d1fae5; color:#065f46; border:1px solid #6ee7b7; min-width:2rem;"
+                                            onclick="toggleSchedule(${goal.id}, ${c.yearId}, ${c.semId}, ${entryId})">✓</button>
+                                       </td>`
+                                    : `<td style="text-align:center; padding:0.25rem;">
+                                        <button class="btn btn-sm btn-outline" style="color:#9ca3af; min-width:2rem;"
+                                            onclick="toggleSchedule(${goal.id}, ${c.yearId}, ${c.semId}, null)">+</button>
+                                       </td>`;
+                            } else {
+                                return `<td style="text-align:center; padding:0.25rem; color:${entryId ? '#059669' : '#d1d5db'}; font-size:1rem;">
+                                    ${entryId ? '✓' : '·'}
+                                </td>`;
+                            }
+                        }).join('');
+                        const goalText = goal.goal_eng || goal.goal_no || '';
+                        return `<tr>
+                            <td style="padding:0.4rem 0.75rem; font-size:0.875rem; max-width:380px;">
+                                <span title="${goalText}">${goalText.length > 90 ? goalText.slice(0, 87) + '…' : goalText}</span>
+                            </td>
+                            ${cells}
+                        </tr>`;
+                    }).join('');
+                    return catRow + goalRows;
+                }).join('');
+
+            container.innerHTML = `
+                <div class="flex-between mb-2">
+                    <h2>${t('Measurement Plan')}</h2>
+                    <p class="text-sm text-muted">${t('Schedule when each goal will be assessed. Click ✓ to remove, + to add.')}</p>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table style="width:100%; border-collapse:collapse; font-size:0.875rem;">
+                        <thead>
+                            <tr style="border-bottom:2px solid #e5e7eb;">
+                                <th style="text-align:left; padding:0.5rem 0.75rem; min-width:280px;">${t('Goal')}</th>
+                                ${colHeaders}
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        async function toggleSchedule(goalId, yearId, semId, existingEntryId) {
+            try {
+                if (existingEntryId) {
+                    await api.deleteGoalSchedule(goalId, existingEntryId);
+                    planSchedule = planSchedule.filter(e => e.id !== existingEntryId);
+                } else {
+                    const entry = await api.addGoalSchedule(goalId, {
+                        academic_year_id: yearId,
+                        semester_id: semId,
+                    });
+                    planSchedule.push({ id: entry.id, goal_id: goalId, academic_year_id: yearId, semester_id: semId });
+                }
+                renderMeasurementPlan();
+            } catch (error) {
+                alert(t('Failed to update schedule: ') + error.message);
             }
         }
 

@@ -91,6 +91,34 @@ class ApiClient {
         return this.request('/aol/academic-years');
     }
 
+    async getSemesters() {
+        return this.request('/aol/semesters');
+    }
+
+    async getProgrammeSchedule(programmeId) {
+        return this.request(`/aol/programmes/${programmeId}/schedule`);
+    }
+
+    // Measurement schedule
+    async getGoalSchedule(goalId) {
+        return this.request(`/aol/goals/${goalId}/schedule`);
+    }
+
+    async addGoalSchedule(goalId, data) {
+        return this.request(`/aol/goals/${goalId}/schedule`, {
+            method: 'POST',
+            body: data,
+        });
+    }
+
+    async deleteGoalSchedule(goalId, scheduleId) {
+        return this.request(`/aol/goals/${goalId}/schedule/${scheduleId}`, { method: 'DELETE' });
+    }
+
+    async getUpcomingMeasurements() {
+        return this.request('/aol/upcoming-measurements');
+    }
+
     async reorderGoals(programmeId, items) {
         return this.request(`/aol/programmes/${programmeId}/goals/reorder`, {
             method: 'PUT',

@@ -435,5 +435,10 @@
   "Failed to add exemption: ": "Kunne ikke legge til fritak: ",
   "Please select exemption type and start year": "Vennligst velg fritakstype og startår",
   "Failed to add: ": "Kunne ikke legge til: ",
-  "Failed to load timeline": "Kunne ikke laste tidslinje"
+  "Failed to load timeline": "Kunne ikke laste tidslinje",
+
+  "Measurement Plan": "Måleplan",
+  "Schedule when each goal will be assessed. Click ✓ to remove, + to add.": "Planlegg når hvert mål skal måles. Klikk ✓ for å fjerne, + for å legge til.",
+  "No active goals": "Ingen aktive mål",
+  "Failed to update schedule: ": "Kunne ikke oppdatere plan: "
 }

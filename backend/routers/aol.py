@@ -32,6 +32,8 @@ from models import (
     CourseLearningMethod,
     CourseAssessmentMethod,
     CourseTechnology,
+    MeasurementSchedule,
+    Semester,
 )
 
 router = APIRouter(prefix="/aol", tags=["AOL"])
@@ -195,6 +197,24 @@ class RubricResponse(BaseModel):
     measure_type: str = "direct"
     active: bool
     traits: list[TraitResponse] = []
+
+    class Config:
+        from_attributes = True
+
+
+class ScheduleCreate(BaseModel):
+    academic_year_id: int
+    semester_id: int
+    notes: str | None = None
+
+
+class ScheduleResponse(BaseModel):
+    id: int
+    academic_year_id: int
+    year_name: str
+    semester_id: int
+    semester_name: str
+    notes: str | None
 
     class Config:
         from_attributes = True
@@ -949,6 +969,218 @@ async def get_academic_years(
         .all()
     )
     return [{"id": y.id, "name": y.name} for y in years]
+
+
+@router.get("/semesters")
+async def get_semesters(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Return all teaching periods ordered by rank."""
+    semesters = db.query(Semester).order_by(Semester.rank).all()
+    return [{"id": s.id, "name": s.name, "rank": s.rank} for s in semesters]
+
+
+# ============================================
+# Measurement Schedule
+# ============================================
+
+@router.get("/programmes/{programme_id}/schedule")
+async def get_programme_schedule(
+    programme_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Get all scheduled measurement entries for all goals in a programme."""
+    goal_ids = [
+        g.id for g in db.query(LearningGoal.id)
+        .filter(LearningGoal.programme_id == programme_id, LearningGoal.archived == False)
+        .all()
+    ]
+    if not goal_ids:
+        return []
+    entries = (
+        db.query(MeasurementSchedule)
+        .options(joinedload(MeasurementSchedule.academic_year), joinedload(MeasurementSchedule.semester))
+        .filter(MeasurementSchedule.goal_id.in_(goal_ids))
+        .all()
+    )
+    return [
+        {
+            "id": e.id,
+            "goal_id": e.goal_id,
+            "academic_year_id": e.academic_year_id,
+            "year_name": e.academic_year.name,
+            "semester_id": e.semester_id,
+            "semester_name": e.semester.name,
+            "notes": e.notes,
+        }
+        for e in entries
+    ]
+
+
+@router.get("/goals/{goal_id}/schedule", response_model=list[ScheduleResponse])
+async def get_goal_schedule(
+    goal_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Get measurement schedule for a goal."""
+    entries = (
+        db.query(MeasurementSchedule)
+        .filter(MeasurementSchedule.goal_id == goal_id)
+        .order_by(MeasurementSchedule.academic_year_id, MeasurementSchedule.semester_id)
+        .all()
+    )
+    return [
+        ScheduleResponse(
+            id=e.id,
+            academic_year_id=e.academic_year_id,
+            year_name=e.academic_year.name,
+            semester_id=e.semester_id,
+            semester_name=e.semester.name,
+            notes=e.notes,
+        )
+        for e in entries
+    ]
+
+
+@router.post("/goals/{goal_id}/schedule", response_model=ScheduleResponse)
+async def add_goal_schedule(
+    goal_id: int,
+    request: ScheduleCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Schedule a measurement period for a goal."""
+    goal = db.query(LearningGoal).filter(LearningGoal.id == goal_id).first()
+    if not goal:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    if not can_edit_goal(user, goal, db):
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    # Check for duplicate
+    existing = db.query(MeasurementSchedule).filter(
+        MeasurementSchedule.goal_id == goal_id,
+        MeasurementSchedule.academic_year_id == request.academic_year_id,
+        MeasurementSchedule.semester_id == request.semester_id,
+    ).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="Already scheduled for this period")
+
+    entry = MeasurementSchedule(
+        goal_id=goal_id,
+        academic_year_id=request.academic_year_id,
+        semester_id=request.semester_id,
+        notes=request.notes,
+        created_by=user.uuid,
+    )
+    db.add(entry)
+    db.commit()
+    db.refresh(entry)
+
+    return ScheduleResponse(
+        id=entry.id,
+        academic_year_id=entry.academic_year_id,
+        year_name=entry.academic_year.name,
+        semester_id=entry.semester_id,
+        semester_name=entry.semester.name,
+        notes=entry.notes,
+    )
+
+
+@router.delete("/goals/{goal_id}/schedule/{schedule_id}")
+async def delete_goal_schedule(
+    goal_id: int,
+    schedule_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Remove a scheduled measurement period."""
+    entry = db.query(MeasurementSchedule).filter(
+        MeasurementSchedule.id == schedule_id,
+        MeasurementSchedule.goal_id == goal_id,
+    ).first()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Schedule entry not found")
+
+    goal = db.query(LearningGoal).filter(LearningGoal.id == goal_id).first()
+    if not can_edit_goal(user, goal, db):
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    db.delete(entry)
+    db.commit()
+    return {"message": "Schedule entry removed"}
+
+
+@router.get("/upcoming-measurements")
+async def get_upcoming_measurements(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Upcoming scheduled measurements across accessible programmes for current + next year."""
+    from datetime import date
+    auth_service = AuthService(db)
+    roles = auth_service.get_user_roles(user)
+    is_admin = "system_admin" in roles or "programme_leader" in roles
+
+    today = date.today()
+    # Current academic year starts in August
+    current_year_start = today.year if today.month >= 8 else today.year - 1
+    # Include current year and next year
+    year_names = [
+        f"{str(current_year_start)[2:]}/{str(current_year_start + 1)[2:]}",
+        f"{str(current_year_start + 1)[2:]}/{str(current_year_start + 2)[2:]}",
+    ]
+    years = db.query(AcadYear).filter(AcadYear.name.in_(year_names)).all()
+    year_ids = [y.id for y in years]
+
+    entries = (
+        db.query(MeasurementSchedule)
+        .options(
+            joinedload(MeasurementSchedule.goal).joinedload(LearningGoal.programme),
+            joinedload(MeasurementSchedule.goal).joinedload(LearningGoal.category),
+            joinedload(MeasurementSchedule.academic_year),
+            joinedload(MeasurementSchedule.semester),
+        )
+        .filter(MeasurementSchedule.academic_year_id.in_(year_ids))
+        .order_by(MeasurementSchedule.academic_year_id, MeasurementSchedule.semester_id)
+        .all()
+    )
+
+    # Filter to programmes accessible by user (unless admin)
+    if not is_admin:
+        accessible_programme_ids = {
+            pr.programme_id for pr in user.programme_roles
+        }
+        entries = [e for e in entries if e.goal.programme_id in accessible_programme_ids]
+
+    lang = "eng"
+    result = []
+    for e in entries:
+        goal = e.goal
+        # Check if an assessment has been recorded for this goal in this year
+        has_assessment = db.query(Assessment).join(Rubric).filter(
+            Rubric.goal_id == goal.id,
+            Assessment.academic_year_id == e.academic_year_id,
+        ).first() is not None
+
+        result.append({
+            "schedule_id": e.id,
+            "goal_id": goal.id,
+            "goal_text": goal.goal_eng or goal.goal_no or "",
+            "programme_id": goal.programme_id,
+            "programme_code": goal.programme.programme_code,
+            "programme_name": goal.programme.name_eng or goal.programme.name_no,
+            "category_name": goal.category.name_eng or goal.category.name_no,
+            "year_id": e.academic_year_id,
+            "year_name": e.academic_year.name,
+            "semester_id": e.semester_id,
+            "semester_name": e.semester.name,
+            "has_assessment": has_assessment,
+        })
+
+    return result
 
 
 @router.get("/methods/learning")

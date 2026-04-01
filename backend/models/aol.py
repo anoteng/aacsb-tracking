@@ -124,6 +124,7 @@ class LearningGoal(Base):
     course_mappings = relationship("GoalCourseMatrix", back_populates="goal")
     staff_assignments = relationship("GoalStaffAssignment", back_populates="goal")
     rubrics = relationship("Rubric", back_populates="goal")
+    schedule = relationship("MeasurementSchedule", back_populates="goal", cascade="all, delete-orphan")
 
 
 class GoalCourseMatrix(Base):
@@ -260,3 +261,20 @@ class AssessmentResult(Base):
         if total == 0:
             return 0
         return ((self.count_meets + self.count_exceeds) / total) * 100
+
+
+class MeasurementSchedule(Base):
+    __tablename__ = "measurement_schedule"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    goal_id = Column(Integer, ForeignKey("learning_goals.id"), nullable=False)
+    academic_year_id = Column(Integer, ForeignKey("acad_year.id"), nullable=False)
+    semester_id = Column(Integer, ForeignKey("semester.id"), nullable=False)
+    notes = Column(Text)
+    created_at = Column(DateTime, server_default=func.now())
+    created_by = Column(Integer, ForeignKey("users.uuid"), nullable=True)
+
+    # Relationships
+    goal = relationship("LearningGoal", back_populates="schedule")
+    academic_year = relationship("AcadYear")
+    semester = relationship("Semester")

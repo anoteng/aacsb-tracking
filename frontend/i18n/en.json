@@ -419,5 +419,10 @@
   "Failed to add exemption: ": "Failed to add exemption: ",
   "Please select exemption type and start year": "Please select exemption type and start year",
   "Failed to add: ": "Failed to add: ",
-  "Failed to load timeline": "Failed to load timeline"
+  "Failed to load timeline": "Failed to load timeline",
+
+  "Measurement Plan": "Measurement Plan",
+  "Schedule when each goal will be assessed. Click ✓ to remove, + to add.": "Schedule when each goal will be assessed. Click ✓ to remove, + to add.",
+  "No active goals": "No active goals",
+  "Failed to update schedule: ": "Failed to update schedule: "
 }

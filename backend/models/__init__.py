@@ -17,6 +17,8 @@ from .aol import (
     CourseLearningMethod,
     CourseAssessmentMethod,
     CourseTechnology,
+    MeasurementSchedule,
+    Semester,
 )
 from .research import (
     Degree,
@@ -65,6 +67,8 @@ __all__ = [
     "CourseLearningMethod",
     "CourseAssessmentMethod",
     "CourseTechnology",
+    "MeasurementSchedule",
+    "Semester",
     # Research models
     "Degree",
     "Discipline",
