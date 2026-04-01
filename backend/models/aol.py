@@ -237,6 +237,7 @@ class Assessment(Base):
     # Relationships
     rubric = relationship("Rubric", back_populates="assessments")
     course = relationship("Course", back_populates="assessments")
+    academic_year = relationship("AcadYear")
     results = relationship("AssessmentResult", back_populates="assessment", cascade="all, delete-orphan")
 
 

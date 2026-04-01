@@ -1968,6 +1968,118 @@ async def update_course_semester(
 
 
 # ============================================================
+# Programme Results (Table 5.1)
+# ============================================================
+
+@router.get("/programmes/{programme_id}/results")
+async def get_programme_results(
+    programme_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Return structured assessment results for Table 5.1 reporting."""
+    # Load all active goals with categories and rubrics
+    goals = (
+        db.query(LearningGoal)
+        .options(
+            joinedload(LearningGoal.category),
+            joinedload(LearningGoal.rubrics),
+        )
+        .filter(
+            LearningGoal.programme_id == programme_id,
+            LearningGoal.archived == False,
+        )
+        .order_by(LearningGoal.sort_order)
+        .all()
+    )
+
+    goal_ids = [g.id for g in goals]
+    rubric_ids = [r.id for g in goals for r in g.rubrics if r.active]
+
+    # Load all assessments for these rubrics with academic year and course
+    assessments = (
+        db.query(Assessment)
+        .options(joinedload(Assessment.academic_year), joinedload(Assessment.course))
+        .filter(Assessment.rubric_id.in_(rubric_ids))
+        .order_by(Assessment.academic_year_id)
+        .all()
+    ) if rubric_ids else []
+
+    assessments_by_rubric: dict[int, list] = {}
+    for a in assessments:
+        assessments_by_rubric.setdefault(a.rubric_id, []).append(a)
+
+    # Load assessed course mappings for all goals
+    mappings = (
+        db.query(GoalCourseMatrix)
+        .options(joinedload(GoalCourseMatrix.course))
+        .filter(
+            GoalCourseMatrix.goal_id.in_(goal_ids),
+            GoalCourseMatrix.is_assessed == True,
+        )
+        .all()
+    ) if goal_ids else []
+
+    # Load ProgrammeCourse teaching periods for this programme
+    pcs = (
+        db.query(ProgrammeCourse)
+        .options(joinedload(ProgrammeCourse.teaching_period))
+        .filter(ProgrammeCourse.programme_id == programme_id)
+        .all()
+    )
+    pc_by_course = {pc.course_id: pc for pc in pcs}
+
+    # Index mappings by goal
+    mappings_by_goal: dict[int, list] = {}
+    for m in mappings:
+        mappings_by_goal.setdefault(m.goal_id, []).append(m)
+
+    result = []
+    for goal in goals:
+        goal_mappings = mappings_by_goal.get(goal.id, [])
+        course_codes = list(dict.fromkeys(m.course.course_code for m in goal_mappings if m.course))
+        teaching_periods = list(dict.fromkeys(
+            pc_by_course[m.course_id].teaching_period.name
+            for m in goal_mappings
+            if m.course_id in pc_by_course and pc_by_course[m.course_id].teaching_period
+        ))
+
+        for rubric in sorted(goal.rubrics, key=lambda r: r.id):
+            if not rubric.active:
+                continue
+
+            rubric_assessments = []
+            for a in assessments_by_rubric.get(rubric.id, []):
+                total = (a.overall_dnm or 0) + (a.overall_meets or 0) + (a.overall_exceeds or 0)
+                meets_exceeds_pct = round(
+                    ((a.overall_meets or 0) + (a.overall_exceeds or 0)) / total * 100, 1
+                ) if total > 0 else None
+                rubric_assessments.append({
+                    "year_name": a.academic_year.name if a.academic_year else "",
+                    "overall_dnm": a.overall_dnm or 0,
+                    "overall_meets": a.overall_meets or 0,
+                    "overall_exceeds": a.overall_exceeds or 0,
+                    "total": total,
+                    "meets_exceeds_pct": meets_exceeds_pct,
+                })
+
+            result.append({
+                "goal_id": goal.id,
+                "goal_text": goal.goal_eng or goal.goal_no or "",
+                "category_name": goal.category.name_eng or goal.category.name_no if goal.category else "",
+                "target_pct": float(goal.target_percentage) if goal.target_percentage else 80.0,
+                "rubric_id": rubric.id,
+                "rubric_name": rubric.name,
+                "measure_type": rubric.measure_type,
+                "courses": course_codes,
+                "teaching_periods": teaching_periods,
+                "assessments": rubric_assessments,
+            })
+
+    return result
+
+
+# ============================================================
 # Course administration
 # ============================================================
 

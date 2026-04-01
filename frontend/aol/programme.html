@@ -51,6 +51,7 @@
             <button class="tab" data-tab="matrix" data-i18n="Curriculum Matrix">Curriculum Matrix</button>
             <button class="tab" data-tab="courses" data-i18n="Courses">Courses</button>
             <button class="tab" data-tab="plan" data-i18n="Measurement Plan">Measurement Plan</button>
+            <button class="tab" data-tab="results" data-i18n="Results">Results</button>
         </div>
 
         <!-- Goals Tab -->
@@ -85,6 +86,13 @@
         <!-- Measurement Plan Tab -->
         <div id="tab-plan" class="tab-content hidden">
             <div id="plan-container">
+                <div class="loading"><div class="spinner"></div></div>
+            </div>
+        </div>
+
+        <!-- Results Tab -->
+        <div id="tab-results" class="tab-content hidden">
+            <div id="results-container">
                 <div class="loading"><div class="spinner"></div></div>
             </div>
         </div>
@@ -136,6 +144,7 @@
         let planSemesters = [];
         let planSchedule = [];  // flat list of schedule entries
         let semesters = [];  // teaching periods from /aol/semesters
+        let resultsLoaded = false;
 
         async function init() {
             try {
@@ -248,6 +257,8 @@
                         loadCourses();
                     } else if (tabName === 'plan' && !planLoaded) {
                         loadMeasurementPlan();
+                    } else if (tabName === 'results' && !resultsLoaded) {
+                        loadResults();
                     }
                 });
             });
@@ -504,7 +515,7 @@
                             ${courses.map(course => {
                                 const periodCell = isAdmin()
                                     ? `<td>
-                                        <select class="form-select form-select-sm" style="min-width:130px;"
+                                        <select class="form-select" style="min-width:130px; padding:0.2rem 0.5rem; font-size:0.875rem;"
                                             onchange="setTeachingPeriod(${course.id}, this)">
                                             <option value="">—</option>
                                             ${semesters.map(s =>
@@ -800,10 +811,10 @@
                     api.getAcademicYears(),
                     api.getProgrammeSchedule(programmeId),
                 ]);
-                // Keep current year + next 2, oldest first
+                // Keep current year + next 5, oldest first
                 const today = new Date();
                 const currentYearStart = today.getMonth() >= 7 ? today.getFullYear() : today.getFullYear() - 1;
-                const relevantYearNames = [0, 1, 2].map(offset => {
+                const relevantYearNames = [0, 1, 2, 3, 4, 5].map(offset => {
                     const y = currentYearStart + offset;
                     return `${String(y).slice(2)}/${String(y + 1).slice(2)}`;
                 });
@@ -908,6 +919,216 @@
             } catch (error) {
                 alert(t('Failed to update schedule: ') + error.message);
             }
+        }
+
+        // ============================================
+        // Results Tab (Table 5.1)
+        // ============================================
+
+        async function loadResults() {
+            resultsLoaded = true;
+            const container = document.getElementById('results-container');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+            try {
+                const data = await api.getProgrammeResults(programmeId);
+                await loadChartJs();
+                renderResults(data, container);
+            } catch (error) {
+                container.innerHTML = `<div class="alert alert-error">${error.message}</div>`;
+            }
+        }
+
+        function loadChartJs() {
+            return new Promise(resolve => {
+                if (window.Chart) { resolve(); return; }
+                const s = document.createElement('script');
+                s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js';
+                s.onload = resolve;
+                document.head.appendChild(s);
+            });
+        }
+
+        function renderResults(data, container) {
+            if (data.length === 0) {
+                container.innerHTML = `<div class="empty-state"><h3>${t('No rubrics found')}</h3><p>${t('Add rubrics to learning goals to see results here.')}</p></div>`;
+                return;
+            }
+
+            const direct = data.filter(r => r.measure_type === 'direct');
+            const indirect = data.filter(r => r.measure_type === 'indirect');
+
+            container.innerHTML = `
+                ${direct.length ? buildTable51(direct, t('Direct Measures')) : ''}
+                ${indirect.length ? buildTable51(indirect, t('Indirect Measures')) : ''}
+                ${buildCharts(data)}
+            `;
+
+            initCharts(data);
+        }
+
+        function buildTable51(rows, title) {
+            // Group rows by goal_id to compute rowspans
+            const goalOrder = [];
+            const byGoal = {};
+            rows.forEach(r => {
+                if (!byGoal[r.goal_id]) { byGoal[r.goal_id] = []; goalOrder.push(r.goal_id); }
+                byGoal[r.goal_id].push(r);
+            });
+
+            const tbodyRows = goalOrder.flatMap(goalId => {
+                const goalRows = byGoal[goalId];
+                return goalRows.map((row, idx) => {
+                    const goalCols = idx === 0 ? `
+                        <td rowspan="${goalRows.length}" style="vertical-align:top; padding:0.5rem 0.75rem;">
+                            <div class="text-sm text-muted" style="margin-bottom:0.2rem;">${row.category_name}</div>
+                            <div style="font-size:0.875rem;">${row.goal_text}</div>
+                        </td>
+                        <td rowspan="${goalRows.length}" style="vertical-align:top; text-align:center; padding:0.5rem 0.75rem; white-space:nowrap; font-size:0.875rem;">
+                            ≥${row.target_pct}%<br>
+                            <span class="text-muted" style="font-size:0.75rem;">${t('Meet or Exceed')}</span>
+                        </td>` : '';
+
+                    const resultsHtml = row.assessments.length
+                        ? row.assessments.map(a => {
+                            const pct = a.meets_exceeds_pct !== null ? a.meets_exceeds_pct + '%' : '—';
+                            const col = a.meets_exceeds_pct !== null
+                                ? (a.meets_exceeds_pct >= row.target_pct ? '#16a34a' : '#dc2626')
+                                : '#6b7280';
+                            return `<div style="font-size:0.8rem; margin-bottom:0.15rem;">
+                                <strong>${a.year_name}:</strong>
+                                <span style="color:${col}; font-weight:600;">${pct}</span>
+                                <span class="text-muted">&nbsp;(${a.overall_dnm}&nbsp;DNM&nbsp;/&nbsp;${a.overall_meets}&nbsp;M&nbsp;/&nbsp;${a.overall_exceeds}&nbsp;E)</span>
+                            </div>`;
+                        }).join('')
+                        : `<span class="text-muted">—</span>`;
+
+                    return `<tr style="border-bottom:1px solid #e5e7eb;">
+                        ${goalCols}
+                        <td style="vertical-align:top; padding:0.5rem 0.75rem; font-size:0.875rem;">
+                            ${row.rubric_name}
+                        </td>
+                        <td style="vertical-align:top; padding:0.5rem 0.75rem; font-size:0.875rem;">
+                            ${row.courses.join(', ') || '—'}
+                        </td>
+                        <td style="vertical-align:top; padding:0.5rem 0.75rem; font-size:0.875rem;">
+                            ${row.teaching_periods.join(', ') || '—'}
+                        </td>
+                        <td style="vertical-align:top; padding:0.5rem 0.75rem;">${resultsHtml}</td>
+                        <td style="vertical-align:top; padding:0.5rem 0.75rem;"></td>
+                        <td style="vertical-align:top; padding:0.5rem 0.75rem;"></td>
+                    </tr>`;
+                });
+            }).join('');
+
+            return `
+                <h3 style="margin:1.5rem 0 0.5rem; font-size:1rem; text-transform:uppercase; letter-spacing:0.05em; color:#374151;">${title}</h3>
+                <div style="overflow-x:auto; margin-bottom:2rem;">
+                    <table style="width:100%; border-collapse:collapse; font-size:0.875rem; border:1px solid #d1d5db;">
+                        <thead>
+                            <tr style="background:#f3f4f6; font-size:0.8rem; text-transform:uppercase; letter-spacing:0.03em;">
+                                <th style="padding:0.5rem 0.75rem; text-align:left; border:1px solid #d1d5db; min-width:200px;">${t('Competency')}</th>
+                                <th style="padding:0.5rem 0.75rem; text-align:center; border:1px solid #d1d5db; min-width:110px;">${t('Performance Target')}</th>
+                                <th style="padding:0.5rem 0.75rem; text-align:left; border:1px solid #d1d5db; min-width:140px;">${t('How Assessed')}</th>
+                                <th style="padding:0.5rem 0.75rem; text-align:left; border:1px solid #d1d5db; min-width:100px;">${t('Where Assessed')}</th>
+                                <th style="padding:0.5rem 0.75rem; text-align:left; border:1px solid #d1d5db; min-width:110px;">${t('When Assessed')}</th>
+                                <th style="padding:0.5rem 0.75rem; text-align:left; border:1px solid #d1d5db; min-width:180px;">${t('Results')}</th>
+                                <th style="padding:0.5rem 0.75rem; text-align:left; border:1px solid #d1d5db; min-width:150px;">${t('Curricular Improvements')}</th>
+                                <th style="padding:0.5rem 0.75rem; text-align:left; border:1px solid #d1d5db; min-width:110px;">${t('Date Changes Made')}</th>
+                            </tr>
+                        </thead>
+                        <tbody>${tbodyRows}</tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function buildCharts(data) {
+            // Only goals that have at least one rubric with assessments
+            const goalOrder = [];
+            const byGoal = {};
+            data.forEach(r => {
+                if (!byGoal[r.goal_id]) { byGoal[r.goal_id] = { text: r.goal_text, target_pct: r.target_pct, rubrics: [] }; goalOrder.push(r.goal_id); }
+                if (r.assessments.length > 0) byGoal[r.goal_id].rubrics.push(r);
+            });
+
+            const goalsWithData = goalOrder.filter(id => byGoal[id].rubrics.length > 0);
+            if (!goalsWithData.length) return '';
+
+            return `
+                <h3 style="margin:1.5rem 0 1rem; font-size:1rem; text-transform:uppercase; letter-spacing:0.05em; color:#374151;">${t('Results Charts')}</h3>
+                <div class="grid grid-2" style="gap:1.5rem; margin-bottom:2rem;">
+                    ${goalsWithData.map(goalId => {
+                        const goal = byGoal[goalId];
+                        return goal.rubrics.map(r => `
+                            <div class="card">
+                                <div class="text-sm text-muted mb-1">${r.category_name} › ${r.rubric_name}</div>
+                                <div style="font-size:0.85rem; margin-bottom:0.75rem;">${r.goal_text.length > 90 ? r.goal_text.slice(0, 90) + '…' : r.goal_text}</div>
+                                <canvas id="chart-rubric-${r.rubric_id}" height="160"></canvas>
+                            </div>
+                        `).join('');
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        function initCharts(data) {
+            data.forEach(r => {
+                if (!r.assessments.length) return;
+                const canvas = document.getElementById(`chart-rubric-${r.rubric_id}`);
+                if (!canvas) return;
+
+                const labels = r.assessments.map(a => a.year_name);
+                const dnmPcts = r.assessments.map(a => a.total > 0 ? Math.round(a.overall_dnm / a.total * 100) : 0);
+                const meetsPcts = r.assessments.map(a => a.total > 0 ? Math.round(a.overall_meets / a.total * 100) : 0);
+                const exceedsPcts = r.assessments.map(a => a.total > 0 ? Math.round(a.overall_exceeds / a.total * 100) : 0);
+
+                new Chart(canvas, {
+                    type: 'bar',
+                    data: {
+                        labels,
+                        datasets: [
+                            { label: t('Does Not Meet'), data: dnmPcts, backgroundColor: '#ef4444', stack: 'a' },
+                            { label: t('Meets'), data: meetsPcts, backgroundColor: '#f59e0b', stack: 'a' },
+                            { label: t('Exceeds'), data: exceedsPcts, backgroundColor: '#22c55e', stack: 'a' },
+                        ],
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            x: { stacked: true },
+                            y: {
+                                stacked: true, min: 0, max: 100,
+                                ticks: { callback: v => v + '%' },
+                            },
+                        },
+                        plugins: {
+                            legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+                            tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.raw}%` } },
+                            annotation: undefined,
+                        },
+                    },
+                    plugins: [{
+                        id: 'targetLine',
+                        afterDraw(chart) {
+                            const { ctx, chartArea: { left, right }, scales: { y } } = chart;
+                            const yPx = y.getPixelForValue(r.target_pct);
+                            ctx.save();
+                            ctx.beginPath();
+                            ctx.setLineDash([6, 4]);
+                            ctx.strokeStyle = '#1e40af';
+                            ctx.lineWidth = 2;
+                            ctx.moveTo(left, yPx);
+                            ctx.lineTo(right, yPx);
+                            ctx.stroke();
+                            ctx.setLineDash([]);
+                            ctx.fillStyle = '#1e40af';
+                            ctx.font = '11px sans-serif';
+                            ctx.fillText(`${t('Target')}: ${r.target_pct}%`, right - 90, yPx - 4);
+                            ctx.restore();
+                        },
+                    }],
+                });
+            });
         }
 
         // Initialize

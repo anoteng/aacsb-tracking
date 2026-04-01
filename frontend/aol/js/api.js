@@ -111,6 +111,10 @@ class ApiClient {
         });
     }
 
+    async getProgrammeResults(programmeId) {
+        return this.request(`/aol/programmes/${programmeId}/results`);
+    }
+
     async setCourseTeachingPeriod(programmeId, courseId, teachingPeriodId) {
         return this.request(`/aol/programmes/${programmeId}/courses/${courseId}/teaching-period`, {
             method: 'PUT',
