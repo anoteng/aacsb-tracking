@@ -2051,7 +2051,7 @@ async def get_programme_results(
     result = []
     for goal in goals:
         goal_mappings = mappings_by_goal.get(goal.id, [])
-        course_codes = list(dict.fromkeys(m.course.course_code for m in goal_mappings if m.course))
+        matrix_course_codes = list(dict.fromkeys(m.course.course_code for m in goal_mappings if m.course))
         teaching_periods = list(dict.fromkeys(
             pc_by_course[m.course_id].teaching_period.name
             for m in goal_mappings
@@ -2064,19 +2064,30 @@ async def get_programme_results(
                 continue
 
             rubric_assessments = []
+            assessment_course_codes = []
+            assessment_year_names = []
             for a in assessments_by_rubric.get(rubric.id, []):
                 total = (a.overall_dnm or 0) + (a.overall_meets or 0) + (a.overall_exceeds or 0)
                 meets_exceeds_pct = round(
                     ((a.overall_meets or 0) + (a.overall_exceeds or 0)) / total * 100, 1
                 ) if total > 0 else None
+                year_name = a.academic_year.name if a.academic_year else ""
                 rubric_assessments.append({
-                    "year_name": a.academic_year.name if a.academic_year else "",
+                    "year_name": year_name,
                     "overall_dnm": a.overall_dnm or 0,
                     "overall_meets": a.overall_meets or 0,
                     "overall_exceeds": a.overall_exceeds or 0,
                     "total": total,
                     "meets_exceeds_pct": meets_exceeds_pct,
                 })
+                if a.course and a.course.course_code not in assessment_course_codes:
+                    assessment_course_codes.append(a.course.course_code)
+                if year_name and year_name not in assessment_year_names:
+                    assessment_year_names.append(year_name)
+
+            # Merge matrix data with actual assessment data
+            courses = list(dict.fromkeys(matrix_course_codes + assessment_course_codes))
+            all_years = list(dict.fromkeys(scheduled_years + assessment_year_names))
 
             result.append({
                 "goal_id": goal.id,
@@ -2086,9 +2097,9 @@ async def get_programme_results(
                 "rubric_id": rubric.id,
                 "rubric_name": rubric.name,
                 "measure_type": rubric.measure_type,
-                "courses": course_codes,
+                "courses": courses,
                 "teaching_periods": teaching_periods,
-                "scheduled_years": scheduled_years,
+                "scheduled_years": all_years,
                 "assessments": rubric_assessments,
             })
 
