@@ -1707,6 +1707,64 @@ async def create_assessment(
     )
 
 
+@router.put("/assessments/{assessment_id}", response_model=AssessmentResponse)
+async def update_assessment(
+    assessment_id: int,
+    request: AssessmentCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Update overall scores and notes for an existing assessment."""
+    assessment = (
+        db.query(Assessment)
+        .options(joinedload(Assessment.rubric).joinedload(Rubric.goal), joinedload(Assessment.course))
+        .filter(Assessment.id == assessment_id)
+        .first()
+    )
+    if not assessment:
+        raise HTTPException(status_code=404, detail="Assessment not found")
+    if not can_enter_assessment(user, assessment.rubric, assessment.course_id, db):
+        raise HTTPException(status_code=403, detail="Not authorized to edit this assessment")
+
+    assessment.overall_dnm = request.overall_dnm
+    assessment.overall_meets = request.overall_meets
+    assessment.overall_exceeds = request.overall_exceeds
+    assessment.notes = request.notes
+    db.commit()
+
+    results = (
+        db.query(AssessmentResult)
+        .options(joinedload(AssessmentResult.trait))
+        .filter(AssessmentResult.assessment_id == assessment_id)
+        .all()
+    )
+    return AssessmentResponse(
+        id=assessment.id,
+        rubric_id=assessment.rubric_id,
+        course_id=assessment.course_id,
+        course_code=assessment.course.course_code,
+        academic_year_id=assessment.academic_year_id,
+        semester_id=assessment.semester_id,
+        assessment_date=str(assessment.assessment_date) if assessment.assessment_date else None,
+        total_students=assessment.total_students,
+        overall_dnm=assessment.overall_dnm or 0,
+        overall_meets=assessment.overall_meets or 0,
+        overall_exceeds=assessment.overall_exceeds or 0,
+        notes=assessment.notes,
+        results=[
+            AssessmentResultResponse(
+                trait_id=r.trait_id,
+                trait_name=r.trait.name,
+                count_does_not_meet=r.count_does_not_meet,
+                count_meets=r.count_meets,
+                count_exceeds=r.count_exceeds,
+                meets_or_exceeds_pct=r.meets_or_exceeds_percentage,
+            )
+            for r in results
+        ],
+    )
+
+
 @router.post("/assessments/{assessment_id}/results")
 async def add_assessment_results(
     assessment_id: int,

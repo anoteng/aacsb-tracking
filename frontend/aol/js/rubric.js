@@ -455,6 +455,9 @@ class RubricComponent {
                         <label class="form-label">Notes</label>
                         <textarea id="assessment-notes" class="form-textarea" rows="2"></textarea>
                     </div>
+                    <div id="existing-assessment-banner" class="alert alert-info hidden mb-2" style="padding:0.5rem 0.75rem;">
+                        Existing assessment loaded — saving will update it.
+                    </div>
                     <h4 class="mb-1">Overall Result</h4>
                     <p class="text-sm text-muted mb-2">Enter the overall number of students at each performance level for this assessment.</p>
                     <div class="card mb-2" style="background:#f8fafc;">
@@ -525,11 +528,54 @@ class RubricComponent {
         document.body.appendChild(modal);
         requestAnimationFrame(() => modal.classList.add('active'));
 
+        // Fetch existing assessments for this rubric (for pre-fill lookup)
+        let existingAssessments = [];
+        let existingAssessmentId = null;
+        api.getAssessments(rubricId).then(list => { existingAssessments = list; }).catch(() => {});
+
+        const existingBanner = document.getElementById('existing-assessment-banner');
+
+        function findExisting(courseId, yearId) {
+            return existingAssessments.find(
+                a => a.course_id === parseInt(courseId) && a.academic_year_id === parseInt(yearId)
+            ) || null;
+        }
+
+        function populateFromExisting(existing) {
+            existingAssessmentId = existing ? existing.id : null;
+            document.getElementById('save-assessment-btn').textContent =
+                existing ? 'Update Assessment' : 'Save Assessment';
+            if (existingBanner) {
+                existingBanner.classList.toggle('hidden', !existing);
+            }
+            document.getElementById('overall-dnm').value = existing ? existing.overall_dnm : 0;
+            document.getElementById('overall-meets').value = existing ? existing.overall_meets : 0;
+            document.getElementById('overall-exceeds').value = existing ? existing.overall_exceeds : 0;
+            document.getElementById('assessment-notes').value = existing ? (existing.notes || '') : '';
+            // Pre-fill trait inputs
+            if (existing) {
+                modal.querySelectorAll('[data-trait]').forEach(traitDiv => {
+                    const traitId = parseInt(traitDiv.dataset.trait);
+                    const r = existing.results.find(x => x.trait_id === traitId);
+                    traitDiv.querySelector('.trait-dnm').value = r ? r.count_does_not_meet : 0;
+                    traitDiv.querySelector('.trait-meets').value = r ? r.count_meets : 0;
+                    traitDiv.querySelector('.trait-exceeds').value = r ? r.count_exceeds : 0;
+                });
+            }
+        }
+
+        function checkExisting() {
+            const courseId = courseIdInput.value || courseSelect.value;
+            const yearId = document.getElementById('assessment-year').value;
+            if (courseId && yearId) {
+                populateFromExisting(findExisting(courseId, yearId));
+            }
+        }
+
         // Populate academic years
         api.getAcademicYears().then(years => {
             const sel = document.getElementById('assessment-year');
             const currentYearStart = new Date().getFullYear();
-            // Default to current academic year (July–June)
             const defaultName = new Date().getMonth() >= 6
                 ? `${String(currentYearStart).slice(2)}/${String(currentYearStart + 1).slice(2)}`
                 : `${String(currentYearStart - 1).slice(2)}/${String(currentYearStart).slice(2)}`;
@@ -539,6 +585,8 @@ class RubricComponent {
         }).catch(() => {
             document.getElementById('assessment-year').innerHTML = '<option value="">Failed to load years</option>';
         });
+
+        document.getElementById('assessment-year').addEventListener('change', checkExisting);
 
         // Course search
         const searchInput = document.getElementById('assessment-course-search');
@@ -554,7 +602,6 @@ class RubricComponent {
                     courseSelect.classList.add('hidden');
                     return;
                 }
-
                 try {
                     const courses = await api.searchCourses(query);
                     courseSelect.innerHTML = courses.map(c =>
@@ -569,6 +616,7 @@ class RubricComponent {
 
         courseSelect.addEventListener('change', () => {
             courseIdInput.value = courseSelect.value;
+            checkExisting();
         });
 
         document.getElementById('save-assessment-btn').addEventListener('click', async () => {
@@ -578,30 +626,34 @@ class RubricComponent {
                 return;
             }
 
+            const payload = {
+                rubric_id: rubricId,
+                course_id: parseInt(courseId),
+                academic_year_id: parseInt(document.getElementById('assessment-year').value),
+                overall_dnm: parseInt(document.getElementById('overall-dnm').value) || 0,
+                overall_meets: parseInt(document.getElementById('overall-meets').value) || 0,
+                overall_exceeds: parseInt(document.getElementById('overall-exceeds').value) || 0,
+                notes: document.getElementById('assessment-notes').value,
+            };
+
+            const results = [];
+            modal.querySelectorAll('[data-trait]').forEach(traitDiv => {
+                const traitId = parseInt(traitDiv.dataset.trait);
+                results.push({
+                    trait_id: traitId,
+                    count_does_not_meet: parseInt(traitDiv.querySelector('.trait-dnm').value) || 0,
+                    count_meets: parseInt(traitDiv.querySelector('.trait-meets').value) || 0,
+                    count_exceeds: parseInt(traitDiv.querySelector('.trait-exceeds').value) || 0,
+                });
+            });
+
             try {
-                // Create assessment
-                const assessment = await api.createAssessment({
-                    rubric_id: rubricId,
-                    course_id: parseInt(courseId),
-                    academic_year_id: parseInt(document.getElementById('assessment-year').value),
-                    overall_dnm: parseInt(document.getElementById('overall-dnm').value) || 0,
-                    overall_meets: parseInt(document.getElementById('overall-meets').value) || 0,
-                    overall_exceeds: parseInt(document.getElementById('overall-exceeds').value) || 0,
-                    notes: document.getElementById('assessment-notes').value,
-                });
-
-                // Add results
-                const results = [];
-                modal.querySelectorAll('[data-trait]').forEach(traitDiv => {
-                    const traitId = parseInt(traitDiv.dataset.trait);
-                    results.push({
-                        trait_id: traitId,
-                        count_does_not_meet: parseInt(traitDiv.querySelector('.trait-dnm').value) || 0,
-                        count_meets: parseInt(traitDiv.querySelector('.trait-meets').value) || 0,
-                        count_exceeds: parseInt(traitDiv.querySelector('.trait-exceeds').value) || 0,
-                    });
-                });
-
+                let assessment;
+                if (existingAssessmentId) {
+                    assessment = await api.updateAssessment(existingAssessmentId, payload);
+                } else {
+                    assessment = await api.createAssessment(payload);
+                }
                 await api.addAssessmentResults(assessment.id, results);
                 modal.remove();
                 alert('Assessment saved successfully!');

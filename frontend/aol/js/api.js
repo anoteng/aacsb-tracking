@@ -245,6 +245,13 @@ class ApiClient {
         });
     }
 
+    async updateAssessment(assessmentId, data) {
+        return this.request(`/aol/assessments/${assessmentId}`, {
+            method: 'PUT',
+            body: data,
+        });
+    }
+
     async addAssessmentResults(assessmentId, results) {
         return this.request(`/aol/assessments/${assessmentId}/results`, {
             method: 'POST',
