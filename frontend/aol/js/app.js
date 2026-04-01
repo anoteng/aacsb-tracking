@@ -16,7 +16,10 @@ class AolApp {
             // Get current user
             this.user = await api.getCurrentUser();
             this.renderNav();
-            await this.loadProgrammes();
+            await Promise.all([
+                this.loadProgrammes(),
+                this.loadUpcomingMeasurements(),
+            ]);
         } catch (error) {
             console.error('Failed to initialize:', error);
             window.location.href = '/aacsb/login';
@@ -93,6 +96,68 @@ class AolApp {
                 </div>
             </a>
         `).join('');
+    }
+
+    async loadUpcomingMeasurements() {
+        const container = document.getElementById('upcoming-measurements');
+        if (!container) return;
+
+        try {
+            const items = await api.getUpcomingMeasurements();
+            this.renderUpcomingMeasurements(items, container);
+        } catch (error) {
+            container.innerHTML = `<div class="alert alert-error">${error.message}</div>`;
+        }
+    }
+
+    renderUpcomingMeasurements(items, container) {
+        if (items.length === 0) {
+            container.innerHTML = `<p class="text-muted">${i18n.t('No measurements scheduled for the coming years.')}</p>`;
+            return;
+        }
+
+        // Group by year
+        const byYear = {};
+        items.forEach(item => {
+            if (!byYear[item.year_name]) byYear[item.year_name] = [];
+            byYear[item.year_name].push(item);
+        });
+
+        container.innerHTML = Object.entries(byYear).map(([yearName, yearItems]) => {
+            // Group by programme within year
+            const byProgramme = {};
+            yearItems.forEach(item => {
+                const key = item.programme_code;
+                if (!byProgramme[key]) byProgramme[key] = { name: item.programme_name, code: item.programme_code, id: item.programme_id, items: [] };
+                byProgramme[key].items.push(item);
+            });
+
+            const progHtml = Object.values(byProgramme).map(prog => `
+                <div style="margin-bottom:0.75rem;">
+                    <a href="/aacsb/aol/programme/${prog.id}" style="font-weight:600; color:#1e40af;">${prog.code}</a>
+                    <span class="text-muted" style="font-size:0.875rem; margin-left:0.4rem;">${prog.name}</span>
+                    <ul style="margin:0.3rem 0 0 1.1rem; padding:0; list-style:disc;">
+                        ${prog.items.map(item => `
+                            <li style="font-size:0.9rem; margin-bottom:0.2rem;">
+                                ${item.has_assessment
+                                    ? `<span style="color:#16a34a;" title="${i18n.t('Assessment recorded')}">&#10003;</span>`
+                                    : `<span style="color:#d97706;" title="${i18n.t('No assessment yet')}">&#9679;</span>`}
+                                <span style="color:#6b7280; font-size:0.8rem;">${item.category_name} &rsaquo;</span>
+                                ${item.goal_text.length > 100 ? item.goal_text.slice(0, 100) + '…' : item.goal_text}
+                                ${item.teaching_periods.length ? `<span class="badge badge-outline" style="margin-left:0.3rem; font-size:0.75rem;">${item.teaching_periods.join(', ')}</span>` : ''}
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div>
+            `).join('');
+
+            return `
+                <div class="card" style="margin-bottom:1rem;">
+                    <h4 style="margin:0 0 0.75rem; font-size:1rem; color:#374151;">${i18n.t('Academic Year')} ${yearName}</h4>
+                    ${progHtml}
+                </div>
+            `;
+        }).join('');
     }
 
     hasRole(role) {

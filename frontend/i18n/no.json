@@ -438,6 +438,11 @@
   "Failed to load timeline": "Kunne ikke laste tidslinje",
 
   "Teaching Period": "Undervisningsperiode",
+  "Upcoming Measurements": "Kommende målinger",
+  "No measurements scheduled for the coming years.": "Ingen målinger planlagt for de kommende årene.",
+  "Assessment recorded": "Vurdering registrert",
+  "No assessment yet": "Ingen vurdering ennå",
+  "Academic Year": "Studieår",
   "Measurement Plan": "Måleplan",
   "Schedule when each goal will be assessed. Click ✓ to remove, + to add.": "Planlegg når hvert mål skal måles. Klikk ✓ for å fjerne, + for å legge til.",
   "No active goals": "Ingen aktive mål",
