@@ -169,6 +169,7 @@ class Rubric(Base):
     name = Column(String(255), nullable=False)
     description = Column(Text)
     rubric_type = Column(Enum(RubricType), default=RubricType.analytic)
+    measure_type = Column(Enum("direct", "indirect", name="rubric_measure_type"), nullable=False, server_default="direct")
     created_at = Column(DateTime, server_default=func.now())
     created_by = Column(Integer, ForeignKey("users.uuid"))
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

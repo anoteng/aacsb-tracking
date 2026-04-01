@@ -145,12 +145,14 @@ class RubricCreate(BaseModel):
     name: str
     description: str | None = None
     rubric_type: Literal["holistic", "analytic"] = "analytic"
+    measure_type: Literal["direct", "indirect"] = "direct"
 
 
 class RubricUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
     active: bool | None = None
+    measure_type: Literal["direct", "indirect"] | None = None
 
 
 class TraitCreate(BaseModel):
@@ -190,6 +192,7 @@ class RubricResponse(BaseModel):
     name: str
     description: str | None
     rubric_type: str
+    measure_type: str = "direct"
     active: bool
     traits: list[TraitResponse] = []
 
@@ -1095,6 +1098,7 @@ async def list_rubrics(
             name=r.name,
             description=r.description,
             rubric_type=r.rubric_type.value if r.rubric_type else "analytic",
+            measure_type=r.measure_type or "direct",
             active=r.active,
             traits=[
                 TraitResponse(
@@ -1133,6 +1137,7 @@ async def create_rubric(
         name=request.name,
         description=request.description,
         rubric_type=request.rubric_type,
+        measure_type=request.measure_type,
         created_by=user.uuid,
     )
     db.add(rubric)
@@ -1145,6 +1150,7 @@ async def create_rubric(
         name=rubric.name,
         description=rubric.description,
         rubric_type=rubric.rubric_type.value if rubric.rubric_type else "analytic",
+        measure_type=rubric.measure_type or "direct",
         active=rubric.active,
         traits=[],
     )
@@ -1176,6 +1182,8 @@ async def update_rubric(
         rubric.description = request.description
     if request.active is not None:
         rubric.active = request.active
+    if request.measure_type is not None:
+        rubric.measure_type = request.measure_type
 
     db.commit()
     db.refresh(rubric)
@@ -1186,6 +1194,7 @@ async def update_rubric(
         name=rubric.name,
         description=rubric.description,
         rubric_type=rubric.rubric_type.value if rubric.rubric_type else "analytic",
+        measure_type=rubric.measure_type or "direct",
         active=rubric.active,
         traits=[
             TraitResponse(
@@ -1200,6 +1209,39 @@ async def update_rubric(
             for t in sorted(rubric.traits, key=lambda x: x.sort_order)
         ],
     )
+
+
+@router.delete("/rubrics/{rubric_id}")
+async def delete_rubric(
+    rubric_id: int,
+    req: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Delete a rubric. Empty rubrics: programme admins. Non-empty: system_admin only."""
+    rubric = (
+        db.query(Rubric)
+        .options(joinedload(Rubric.goal))
+        .filter(Rubric.id == rubric_id)
+        .first()
+    )
+    if not rubric:
+        raise HTTPException(status_code=404, detail="Rubric not found")
+
+    has_assessments = db.query(Assessment).filter(Assessment.rubric_id == rubric_id).count() > 0
+    real_user = getattr(req.state, "real_user", user)
+    auth_service = AuthService(db)
+
+    if has_assessments:
+        if "system_admin" not in auth_service.get_user_roles(real_user):
+            raise HTTPException(status_code=403, detail="Only system admins can delete rubrics with assessment data")
+    else:
+        if not can_edit_goal(user, rubric.goal, db):
+            raise HTTPException(status_code=403, detail="Not authorized to delete this rubric")
+
+    db.delete(rubric)
+    db.commit()
+    return {"message": "Rubric deleted"}
 
 
 # ============================================

@@ -175,6 +175,10 @@ class ApiClient {
         });
     }
 
+    async deleteRubric(rubricId) {
+        return this.request(`/aol/rubrics/${rubricId}`, { method: 'DELETE' });
+    }
+
     // Traits
     async createTrait(rubricId, data) {
         return this.request(`/aol/rubrics/${rubricId}/traits`, {

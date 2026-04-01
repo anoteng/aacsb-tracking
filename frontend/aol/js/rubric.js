@@ -60,12 +60,15 @@ class RubricComponent {
     }
 
     renderRubric(rubric, canEdit) {
+        const measureBadgeClass = rubric.measure_type === 'indirect' ? 'badge-warning' : 'badge-info';
+        const measureLabel = rubric.measure_type === 'indirect' ? 'Indirect' : 'Direct';
         return `
             <div class="rubric-card" data-rubric-id="${rubric.id}">
                 <div class="rubric-header">
                     <div>
                         <strong>${rubric.name}</strong>
                         <span class="rubric-type">${rubric.rubric_type}</span>
+                        <span class="badge ${measureBadgeClass}" style="font-size:0.7rem;">${measureLabel}</span>
                         ${!rubric.active ? '<span class="text-muted">(Inactive)</span>' : ''}
                     </div>
                     ${canEdit ? `
@@ -78,6 +81,9 @@ class RubricComponent {
                             </button>
                             <button class="btn btn-sm btn-outline" onclick="rubricComponent.showAssessmentModal(${rubric.id})">
                                 Assess
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="rubricComponent.deleteRubric(${rubric.id})">
+                                Delete
                             </button>
                         </div>
                     ` : ''}
@@ -148,6 +154,13 @@ class RubricComponent {
                             <option value="holistic">Holistic (single overall assessment)</option>
                         </select>
                     </div>
+                    <div class="form-group">
+                        <label class="form-label">Measurement type</label>
+                        <select id="rubric-measure-type" class="form-select">
+                            <option value="direct">Direct</option>
+                            <option value="indirect">Indirect</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
@@ -164,6 +177,7 @@ class RubricComponent {
                 name: document.getElementById('rubric-name').value,
                 description: document.getElementById('rubric-description').value,
                 rubric_type: document.getElementById('rubric-type').value,
+                measure_type: document.getElementById('rubric-measure-type').value,
             };
 
             if (!data.name) {
@@ -203,6 +217,13 @@ class RubricComponent {
                         <textarea id="rubric-description" class="form-textarea">${rubric.description || ''}</textarea>
                     </div>
                     <div class="form-group">
+                        <label class="form-label">Measurement type</label>
+                        <select id="rubric-measure-type" class="form-select">
+                            <option value="direct" ${rubric.measure_type !== 'indirect' ? 'selected' : ''}>Direct</option>
+                            <option value="indirect" ${rubric.measure_type === 'indirect' ? 'selected' : ''}>Indirect</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
                         <label class="form-label">
                             <input type="checkbox" id="rubric-active" ${rubric.active ? 'checked' : ''}>
                             Active
@@ -224,6 +245,7 @@ class RubricComponent {
                 name: document.getElementById('rubric-name').value,
                 description: document.getElementById('rubric-description').value,
                 active: document.getElementById('rubric-active').checked,
+                measure_type: document.getElementById('rubric-measure-type').value,
             };
 
             try {
@@ -377,6 +399,25 @@ class RubricComponent {
             this.load();
         } catch (error) {
             alert('Failed to delete trait: ' + error.message);
+        }
+    }
+
+    async deleteRubric(rubricId) {
+        const rubric = this.rubrics.find(r => r.id === rubricId);
+        if (!rubric) return;
+
+        const hasData = rubric.traits.length > 0;
+        const msg = hasData
+            ? `Delete rubric "${rubric.name}"?\n\nThis rubric has traits and may have assessment data. Only system admins can delete rubrics with recorded assessments.`
+            : `Delete rubric "${rubric.name}"?`;
+
+        if (!confirm(msg)) return;
+
+        try {
+            await api.deleteRubric(rubricId);
+            this.load();
+        } catch (error) {
+            alert('Failed to delete rubric: ' + error.message);
         }
     }
 
