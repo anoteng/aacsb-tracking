@@ -308,7 +308,8 @@
     </main>
 
     <script>
-        const API_BASE = '/aacsb/api';
+        const APP_BASE = '/' + window.location.pathname.split('/')[1];
+        const API_BASE = APP_BASE + '/api';
         let currentUser = null;
         let users = [];
         let roles = [];
@@ -336,7 +337,7 @@
             try {
                 const response = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' });
                 if (!response.ok) {
-                    window.location.href = '/aacsb/login';
+                    window.location.href = APP_BASE + '/login';
                     return;
                 }
                 currentUser = await response.json();
@@ -348,7 +349,7 @@
                 // The backend handles this - if we can access admin endpoints, we're authorized
                 if (!currentUser.roles.includes('system_admin') && !currentUser.impersonation?.active) {
                     alert(t('Access denied. System admin role required.'));
-                    window.location.href = '/aacsb/aol';
+                    window.location.href = APP_BASE + '/aol';
                     return;
                 }
 
@@ -358,7 +359,7 @@
                     <button onclick="logout()" class="btn btn-sm btn-outline" style="color: white; border-color: rgba(255,255,255,0.3);">${t('Logout')}</button>
                 `;
             } catch (error) {
-                window.location.href = '/aacsb/login';
+                window.location.href = APP_BASE + '/login';
             }
         }
 
@@ -409,7 +410,7 @@
 
         async function logout() {
             await fetch(`${API_BASE}/auth/logout`, { method: 'POST', credentials: 'include' });
-            window.location.href = '/aacsb/login';
+            window.location.href = APP_BASE + '/login';
         }
 
         async function loadData() {

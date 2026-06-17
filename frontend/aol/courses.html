@@ -191,7 +191,7 @@
         const { t } = i18n;
         const locName = obj => i18n.getLang() === 'no' ? (obj.name_no || obj.name_eng) : (obj.name_eng || obj.name_no);
 
-        const API = '/aacsb/api';
+        const API = window.APP_BASE + '/api';
         let currentUser = null;
         let isAdmin = false;
         let allCourses = [];
@@ -207,15 +207,15 @@
                 renderNav();
                 await loadCourses();
             } catch (e) {
-                window.location.href = '/aacsb/login';
+                window.location.href = window.APP_BASE + '/login';
             }
         }
 
         function renderNav() {
             document.getElementById('nav-user').innerHTML = `
                 <span>${currentUser.firstname} ${currentUser.lastname}</span>
-                <a href="/aacsb/settings" class="btn btn-sm btn-outline" style="color:white;border-color:rgba(255,255,255,0.3);">${t('Settings')}</a>
-                <button onclick="api.logout().then(()=>window.location.href='/aacsb/login')" class="btn btn-sm btn-outline" style="color:white;border-color:rgba(255,255,255,0.3);">${t('Logout')}</button>
+                <a href="${window.APP_BASE}/settings" class="btn btn-sm btn-outline" style="color:white;border-color:rgba(255,255,255,0.3);">${t('Settings')}</a>
+                <button onclick="api.logout().then(()=>window.location.href=window.APP_BASE+'/login')" class="btn btn-sm btn-outline" style="color:white;border-color:rgba(255,255,255,0.3);">${t('Logout')}</button>
             `;
             if (currentUser.impersonation && currentUser.impersonation.active) {
                 const banner = document.getElementById('impersonation-banner');
@@ -227,7 +227,7 @@
         }
 
         async function stopImpersonation() {
-            await fetch('/aacsb/api/admin/stop-impersonation', { method: 'POST', credentials: 'include' });
+            await fetch(window.APP_BASE + '/api/admin/stop-impersonation', { method: 'POST', credentials: 'include' });
             location.reload();
         }
 
@@ -286,7 +286,7 @@
                         </div>
                         <div style="display:flex;gap:0.5rem;align-items:center;">
                             ${isAdmin ? `<button class="btn btn-sm btn-outline" id="prme-btn" onclick="togglePrme(${course.id}, ${course.prme_report})" title="${t('Toggle PRME reporting')}">${course.prme_report ? t('Unmark PRME') : t('Mark as PRME')}</button>` : ''}
-                            <a href="/aacsb/aol/course/${course.id}" class="btn btn-primary btn-sm">${t('Edit Matrix')}</a>
+                            <a href="${window.APP_BASE}/aol/course/${course.id}" class="btn btn-primary btn-sm">${t('Edit Matrix')}</a>
                         </div>
                     </div>
 
@@ -348,7 +348,7 @@
                 <tbody>
                 ${programmes.map(p => `
                     <tr>
-                        <td style="padding:0.35rem 0;"><a href="/aacsb/aol/programme/${p.programme_id}">${p.programme_code}</a></td>
+                        <td style="padding:0.35rem 0;"><a href="${window.APP_BASE}/aol/programme/${p.programme_id}">${p.programme_code}</a></td>
                         <td style="padding:0.35rem 0;">${locName(p)}</td>
                         <td style="padding:0.35rem 0;">${p.semester ? p.semester + '. sem.' : '–'}</td>
                     </tr>

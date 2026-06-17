@@ -2,7 +2,18 @@
  * API Client for AACSB AOL
  */
 
-const API_BASE = '/aacsb/api';
+window.APP_BASE = '/' + window.location.pathname.split('/')[1];
+const API_BASE = window.APP_BASE + '/api';
+
+// Rewrite hardcoded nav links on pages that use this file
+document.addEventListener('DOMContentLoaded', function () {
+    if (window.APP_BASE === '/aacsb') return;
+    document.querySelectorAll('a[href]').forEach(el => {
+        if (el.href.includes(window.location.origin + '/aacsb/')) {
+            el.href = el.href.replace(window.location.origin + '/aacsb/', window.location.origin + window.APP_BASE + '/');
+        }
+    });
+});
 
 class ApiClient {
     constructor() {
@@ -27,7 +38,7 @@ class ApiClient {
         const response = await fetch(url, config);
 
         if (response.status === 401) {
-            window.location.href = '/aacsb/login';
+            window.location.href = window.APP_BASE + '/login';
             throw new Error('Unauthorized');
         }
 

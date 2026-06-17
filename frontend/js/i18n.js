@@ -34,7 +34,9 @@ const i18n = (() => {
 
         if (currentLang !== 'en') {
             try {
-                const res = await fetch(`/aacsb/static/i18n/${currentLang}.json`);
+                const basePath = '/' + window.location.pathname.split('/')[1];
+                // Cache-bust so translation updates apply without a hard refresh
+                const res = await fetch(`${basePath}/static/i18n/${currentLang}.json?v=${Date.now()}`);
                 if (res.ok) {
                     translations = await res.json();
                 }

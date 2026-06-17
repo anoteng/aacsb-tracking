@@ -179,7 +179,7 @@ class Rubric(Base):
     # Relationships
     goal = relationship("LearningGoal", back_populates="rubrics")
     traits = relationship("RubricTrait", back_populates="rubric", cascade="all, delete-orphan")
-    assessments = relationship("Assessment", back_populates="rubric")
+    assessments = relationship("Assessment", back_populates="rubric", cascade="all, delete-orphan")
 
 
 class RubricTrait(Base):
@@ -196,7 +196,7 @@ class RubricTrait(Base):
 
     # Relationships
     rubric = relationship("Rubric", back_populates="traits")
-    results = relationship("AssessmentResult", back_populates="trait")
+    results = relationship("AssessmentResult", back_populates="trait", cascade="all, delete-orphan")
 
 
 class AcadYear(Base):

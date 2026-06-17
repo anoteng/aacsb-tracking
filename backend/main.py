@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 import os
 
 from config import get_settings
@@ -15,13 +15,16 @@ app = FastAPI(
     title=settings.app_name,
     description="AACSB Accreditation Management System",
     version="1.0.0",
-    root_path="/aacsb",
+    root_path=settings.app_base_path,
 )
 
-# CORS middleware
+cors_origins = [settings.app_origin]
+if settings.debug:
+    cors_origins += ["http://localhost", "http://127.0.0.1"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://hh-utdanning.nmbu.no"],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -49,17 +52,27 @@ if os.path.exists(frontend_path):
     app.mount("/static", StaticFiles(directory=frontend_path), name="static")
 
 
+def serve_page(path: str) -> HTMLResponse:
+    """Serve an HTML page, rewriting hardcoded /aacsb/ paths to the correct base path."""
+    with open(path, encoding="utf-8") as f:
+        content = f.read()
+    if settings.app_base_path != "/aacsb":
+        for quote in ('"', "'", "`"):
+            content = content.replace(f"{quote}/aacsb/", f"{quote}{settings.app_base_path}/")
+    return HTMLResponse(content)
+
+
 # Serve frontend pages
 @app.get("/")
 async def root():
-    return RedirectResponse(url="/aacsb/dashboard")
+    return RedirectResponse(url=f"{settings.app_base_path}/dashboard")
 
 
 @app.get("/dashboard")
 async def dashboard_page():
     page_path = os.path.join(frontend_path, "dashboard.html")
     if os.path.exists(page_path):
-        return FileResponse(page_path)
+        return serve_page(page_path)
     return {"message": "Dashboard page not found"}
 
 
@@ -68,7 +81,7 @@ async def dashboard_page():
 async def aol_index():
     index_path = os.path.join(frontend_path, "aol", "index.html")
     if os.path.exists(index_path):
-        return FileResponse(index_path)
+        return serve_page(index_path)
     return {"message": "AOL frontend not found"}
 
 
@@ -76,7 +89,7 @@ async def aol_index():
 async def aol_programme(programme_id: int):
     page_path = os.path.join(frontend_path, "aol", "programme.html")
     if os.path.exists(page_path):
-        return FileResponse(page_path)
+        return serve_page(page_path)
     return {"message": "Programme page not found"}
 
 
@@ -84,18 +97,41 @@ async def aol_programme(programme_id: int):
 async def aol_courses():
     page_path = os.path.join(frontend_path, "aol", "courses.html")
     if os.path.exists(page_path):
-        return FileResponse(page_path)
+        return serve_page(page_path)
     return {"message": "Courses page not found"}
 
 
 
 
-@app.get("/aol/settings")
-async def aol_settings():
+@app.get("/aol/course/{course_id}")
+async def aol_course(course_id: int):
+    page_path = os.path.join(frontend_path, "aol", "course.html")
+    if os.path.exists(page_path):
+        return serve_page(page_path)
+    return {"message": "Course page not found"}
+
+
+@app.get("/settings")
+async def settings_page():
     page_path = os.path.join(frontend_path, "aol", "settings.html")
     if os.path.exists(page_path):
-        return FileResponse(page_path)
+        return serve_page(page_path)
     return {"message": "Settings page not found"}
+
+
+# Legacy URL — prod nginx redirects the same way
+@app.get("/aol/settings")
+async def aol_settings():
+    return RedirectResponse(url=f"{settings.app_base_path}/settings", status_code=301)
+
+
+@app.get("/qualifications")
+@app.get("/qualifications/")
+async def qualifications_page():
+    page_path = os.path.join(frontend_path, "qualifications.html")
+    if os.path.exists(page_path):
+        return serve_page(page_path)
+    return {"message": "Qualifications page not found"}
 
 
 @app.get("/admin")
@@ -103,7 +139,7 @@ async def aol_settings():
 async def admin_page():
     page_path = os.path.join(frontend_path, "admin.html")
     if os.path.exists(page_path):
-        return FileResponse(page_path)
+        return serve_page(page_path)
     return {"message": "Admin page not found"}
 
 
@@ -111,7 +147,7 @@ async def admin_page():
 async def login_page():
     index_path = os.path.join(frontend_path, "index.html")
     if os.path.exists(index_path):
-        return FileResponse(index_path)
+        return serve_page(index_path)
     return {"message": "Login page not found"}
 
 
@@ -121,7 +157,7 @@ async def login_page():
 async def research_index():
     page_path = os.path.join(frontend_path, "research.html")
     if os.path.exists(page_path):
-        return FileResponse(page_path)
+        return serve_page(page_path)
     return {"message": "Research page not found"}
 
 

@@ -1,6 +1,6 @@
 from pydantic_settings import BaseSettings
 from functools import lru_cache
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlparse
 
 
 class Settings(BaseSettings):
@@ -47,6 +47,15 @@ class Settings(BaseSettings):
     def database_url(self) -> str:
         password = quote_plus(self.db_password)
         return f"mysql+pymysql://{self.db_user}:{password}@{self.db_host}:{self.db_port}/{self.db_name}"
+
+    @property
+    def app_base_path(self) -> str:
+        return urlparse(self.app_url).path
+
+    @property
+    def app_origin(self) -> str:
+        parsed = urlparse(self.app_url)
+        return f"{parsed.scheme}://{parsed.netloc}"
 
     class Config:
         env_file = ".env"

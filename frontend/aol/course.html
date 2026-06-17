@@ -164,7 +164,7 @@
                 const user = await api.getCurrentUser();
                 renderNav(user);
             } catch {
-                window.location.href = '/aacsb/login';
+                window.location.href = window.APP_BASE + '/login';
                 return;
             }
 
@@ -181,8 +181,8 @@
             const navUser = document.getElementById('nav-user');
             navUser.innerHTML = `
                 <span>${user.full_name}</span>
-                <a href="/aacsb/settings" style="margin-left:0.75rem; color:rgba(255,255,255,0.7); font-size:0.8rem;">${t('Settings')}</a>
-                <a href="#" onclick="api.logout().then(()=>location.href='/aacsb/login')" style="margin-left:0.75rem; color:rgba(255,255,255,0.7); font-size:0.8rem;">${t('Logout')}</a>
+                <a href="${window.APP_BASE}/settings" style="margin-left:0.75rem; color:rgba(255,255,255,0.7); font-size:0.8rem;">${t('Settings')}</a>
+                <a href="#" onclick="api.logout().then(()=>location.href=window.APP_BASE+'/login')" style="margin-left:0.75rem; color:rgba(255,255,255,0.7); font-size:0.8rem;">${t('Logout')}</a>
             `;
             if (user.impersonation && user.impersonation.active) {
                 const banner = document.getElementById('impersonation-banner');
@@ -194,7 +194,7 @@
         }
 
         async function stopImpersonation() {
-            await fetch('/aacsb/api/admin/stop-impersonation', { method: 'POST', credentials: 'include' });
+            await fetch(window.APP_BASE + '/api/admin/stop-impersonation', { method: 'POST', credentials: 'include' });
             location.reload();
         }
 

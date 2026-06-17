@@ -59,7 +59,7 @@
     <script src="/aacsb/static/aol/js/app.js"></script>
     <script>
         async function stopImpersonation() {
-            await fetch('/aacsb/api/admin/stop-impersonation', { method: 'POST', credentials: 'include' });
+            await fetch(window.APP_BASE + '/api/admin/stop-impersonation', { method: 'POST', credentials: 'include' });
             location.reload();
         }
     </script>

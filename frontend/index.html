@@ -93,7 +93,8 @@
         i18n.init();
         const { t } = i18n;
 
-        const API_BASE = '/aacsb/api';
+        const APP_BASE = '/' + window.location.pathname.split('/')[1];
+        const API_BASE = APP_BASE + '/api';
 
         // Check if Google OAuth is configured
         fetch(`${API_BASE}/auth/google/enabled`)
@@ -160,7 +161,7 @@
                 });
 
                 if (response.ok) {
-                    window.location.href = '/aacsb/dashboard';
+                    window.location.href = APP_BASE + '/dashboard';
                 } else {
                     const data = await response.json();
                     showAlert(data.detail || t('Invalid credentials'));
@@ -205,7 +206,7 @@
                 });
 
                 if (completeRes.ok) {
-                    window.location.href = '/aacsb/dashboard';
+                    window.location.href = APP_BASE + '/dashboard';
                 } else {
                     const data = await completeRes.json();
                     showAlert(data.detail || t('Passkey authentication failed'));
@@ -255,7 +256,7 @@
         fetch(`${API_BASE}/auth/me`, { credentials: 'include' })
             .then(response => {
                 if (response.ok) {
-                    window.location.href = '/aacsb/dashboard';
+                    window.location.href = APP_BASE + '/dashboard';
                 }
             })
             .catch(() => {});

@@ -12,6 +12,7 @@ class PublicationType(str, enum.Enum):
     prj_article = "prj_article"  # Peer-reviewed journal article
     peer_reviewed_other = "peer_reviewed_other"  # Additional peer/editorial reviewed
     other_ic = "other_ic"  # All other intellectual contributions
+    not_relevant = "not_relevant"  # Not counted toward qualification (e.g., supervised PhD/master theses)
 
 
 class PortfolioCategory(str, enum.Enum):

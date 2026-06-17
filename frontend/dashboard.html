@@ -168,7 +168,7 @@
             : (obj.name_eng || obj.name_no);
 
         async function stopImpersonation() {
-            await fetch('/aacsb/api/admin/stop-impersonation', { method: 'POST', credentials: 'include' });
+            await fetch(window.APP_BASE + '/api/admin/stop-impersonation', { method: 'POST', credentials: 'include' });
             location.reload();
         }
 
@@ -179,15 +179,15 @@
             try {
                 user = await api.getCurrentUser();
             } catch {
-                window.location.href = '/aacsb/login';
+                window.location.href = window.APP_BASE + '/login';
                 return;
             }
 
             // Nav user
             document.getElementById('nav-user').innerHTML = `
                 <span>${user.firstname} ${user.lastname}</span>
-                <a href="/aacsb/settings" class="btn btn-sm btn-outline" style="color:white; border-color:rgba(255,255,255,0.3);">${t('Settings')}</a>
-                <button onclick="api.logout().then(()=>location.href='/aacsb/login')" class="btn btn-sm btn-outline" style="color:white; border-color:rgba(255,255,255,0.3);">${t('Logout')}</button>
+                <a href="${window.APP_BASE}/settings" class="btn btn-sm btn-outline" style="color:white; border-color:rgba(255,255,255,0.3);">${t('Settings')}</a>
+                <button onclick="api.logout().then(()=>location.href=window.APP_BASE+'/login')" class="btn btn-sm btn-outline" style="color:white; border-color:rgba(255,255,255,0.3);">${t('Logout')}</button>
             `;
 
             if (user.impersonation && user.impersonation.active) {
@@ -237,7 +237,7 @@
                         </div>
                         <div class="dash-card-body">
                             ${data.coordinator_courses.map(c => `
-                            <a href="/aacsb/aol/course/${c.id}" class="dash-item">
+                            <a href="${window.APP_BASE}/aol/course/${c.id}" class="dash-item">
                                 <div>
                                     <div class="dash-item-name">${c.course_code}</div>
                                     <div class="dash-item-sub">${locName(c)}</div>
@@ -257,7 +257,7 @@
                         </div>
                         <div class="dash-card-body">
                             ${data.programme_roles.map(pr => `
-                            <a href="/aacsb/aol/programme/${pr.programme_id}" class="dash-item">
+                            <a href="${window.APP_BASE}/aol/programme/${pr.programme_id}" class="dash-item">
                                 <div>
                                     <div class="dash-item-name">${pr.programme_code}</div>
                                     <div class="dash-item-sub">${locName(pr)}</div>
@@ -288,27 +288,27 @@
             html += `
             <h2 style="margin-top:2.5rem; font-size:1rem; color:var(--secondary); font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">${t('Sections')}</h2>
             <div class="nav-cards">
-                <a href="/aacsb/aol" class="nav-card">
+                <a href="${window.APP_BASE}/aol" class="nav-card">
                     <div class="nav-card-icon">&#127891;</div>
                     <div class="nav-card-title">AOL</div>
                     <div class="nav-card-desc">${t('Assurance of Learning — study programmes and learning goals')}</div>
                 </a>
-                <a href="/aacsb/aol/courses" class="nav-card">
+                <a href="${window.APP_BASE}/aol/courses" class="nav-card">
                     <div class="nav-card-icon">&#128218;</div>
                     <div class="nav-card-title">${t('Courses')}</div>
                     <div class="nav-card-desc">${t('Course list and matrix mappings')}</div>
                 </a>
-                <a href="/aacsb/research" class="nav-card">
+                <a href="${window.APP_BASE}/research" class="nav-card">
                     <div class="nav-card-icon">&#128196;</div>
                     <div class="nav-card-title">${t('Research')}</div>
                     <div class="nav-card-desc">${t('Intellectual contributions and publication classification')}</div>
                 </a>
-                <a href="/aacsb/qualifications" class="nav-card">
+                <a href="${window.APP_BASE}/qualifications" class="nav-card">
                     <div class="nav-card-icon">&#127942;</div>
                     <div class="nav-card-title">${t('Qualifications')}</div>
                     <div class="nav-card-desc">${t('Faculty qualification status overview')}</div>
                 </a>
-                ${isAdmin ? `<a href="/aacsb/admin" class="nav-card">
+                ${isAdmin ? `<a href="${window.APP_BASE}/admin" class="nav-card">
                     <div class="nav-card-icon">&#9881;&#65039;</div>
                     <div class="nav-card-title">${t('Admin')}</div>
                     <div class="nav-card-desc">${t('System administration and user management')}</div>
@@ -335,7 +335,7 @@
                     html = `
                         <div class="pub-remaining">${classifiedInDb} ${t('publications classified in database')}</div>
                         <div style="font-size:0.8rem;color:var(--secondary);">${t('NVA unavailable — total count unknown')}</div>
-                        <a href="/aacsb/qualifications" style="font-size:0.875rem;color:var(--primary);">${t('Go to Qualifications')} &rarr;</a>`;
+                        <a href="${window.APP_BASE}/qualifications" style="font-size:0.875rem;color:var(--primary);">${t('Go to Qualifications')} &rarr;</a>`;
                 } else {
                     const barColor = unclassified === 0 ? 'var(--success)' : 'var(--primary)';
                     html = `
@@ -350,7 +350,7 @@
                                 ? t('All publications classified')
                                 : `${unclassified} ${t('remaining to classify')}`}
                         </div>
-                        <a href="/aacsb/qualifications" style="font-size:0.875rem;color:var(--primary);">${t('Go to Qualifications')} &rarr;</a>`;
+                        <a href="${window.APP_BASE}/qualifications" style="font-size:0.875rem;color:var(--primary);">${t('Go to Qualifications')} &rarr;</a>`;
                 }
                 body.innerHTML = html;
             } catch (e) {

@@ -510,7 +510,8 @@
     </main>
 
     <script>
-        const API_BASE = '/aacsb/api';
+        const APP_BASE = '/' + window.location.pathname.split('/')[1];
+        const API_BASE = APP_BASE + '/api';
         let currentUser = null;
         let myStatus = null;
         let myContributions = [];
@@ -519,7 +520,8 @@
         let contributionsSortState = { column: 'year', direction: 'desc' };
         let managedSortState = { column: 'year', direction: 'desc' };
         let facultySortState = { column: 'name', direction: 'asc' };
-        let selectedPeriod = { year_from: 2020, year_to: 2025 }; // Default 6-year window
+        const _thisYear = new Date().getFullYear();
+        let selectedPeriod = { year_from: _thisYear - 5, year_to: _thisYear }; // Default 6-year window
 
         document.addEventListener('DOMContentLoaded', async () => {
             await i18n.init();
@@ -534,7 +536,7 @@
             try {
                 const response = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' });
                 if (!response.ok) {
-                    window.location.href = '/aacsb/login';
+                    window.location.href = APP_BASE + '/login';
                     return;
                 }
                 currentUser = await response.json();
@@ -553,7 +555,7 @@
                     document.getElementById('overview-tab').style.display = 'block';
                 }
             } catch (error) {
-                window.location.href = '/aacsb/login';
+                window.location.href = APP_BASE + '/login';
             }
         }
 
@@ -587,7 +589,7 @@
 
         async function logout() {
             await fetch(`${API_BASE}/auth/logout`, { method: 'POST', credentials: 'include' });
-            window.location.href = '/aacsb/login';
+            window.location.href = APP_BASE + '/login';
         }
 
         function setupTabs() {
@@ -762,6 +764,7 @@
                                             <option value="prj_article" ${myCat.publication_type === 'prj_article' ? 'selected' : ''}>${t('PRJ Article')}</option>
                                             <option value="peer_reviewed_other" ${myCat.publication_type === 'peer_reviewed_other' ? 'selected' : ''}>${t('Peer-reviewed Other')}</option>
                                             <option value="other_ic" ${myCat.publication_type === 'other_ic' ? 'selected' : ''}>${t('Other IC')}</option>
+                                            <option value="not_relevant" ${myCat.publication_type === 'not_relevant' ? 'selected' : ''}>${t('Not relevant')}</option>
                                         </select>
                                     </td>
                                     <td>
@@ -1018,9 +1021,9 @@
             const sortedFaculty = sortFaculty([...data.faculty], facultySortState.column, facultySortState.direction);
 
             // Generate period options (6-year windows)
-            const currentYear = 2025;
+            const currentYear = new Date().getFullYear();
             const periodOptions = [];
-            for (let endYear = currentYear + 2; endYear >= currentYear - 3; endYear--) {
+            for (let endYear = currentYear + 4; endYear >= currentYear - 4; endYear--) {
                 const startYear = endYear - 5;
                 const selected = data.period.year_from === startYear && data.period.year_to === endYear;
                 periodOptions.push(`<option value="${startYear}-${endYear}" ${selected ? 'selected' : ''}>${startYear} - ${endYear}</option>`);
@@ -1276,6 +1279,7 @@
                                             <option value="prj_article" ${cat.publication_type === 'prj_article' ? 'selected' : ''}>${t('PRJ Article')}</option>
                                             <option value="peer_reviewed_other" ${cat.publication_type === 'peer_reviewed_other' ? 'selected' : ''}>${t('Peer-reviewed Other')}</option>
                                             <option value="other_ic" ${cat.publication_type === 'other_ic' ? 'selected' : ''}>${t('Other IC')}</option>
+                                            <option value="not_relevant" ${cat.publication_type === 'not_relevant' ? 'selected' : ''}>${t('Not relevant')}</option>
                                         </select>
                                     </td>
                                     <td>

@@ -22,7 +22,7 @@ class AolApp {
             ]);
         } catch (error) {
             console.error('Failed to initialize:', error);
-            window.location.href = '/aacsb/login';
+            window.location.href = window.APP_BASE + '/login';
         }
     }
 
@@ -31,7 +31,7 @@ class AolApp {
         if (navUser) {
             navUser.innerHTML = `
                 <span>${this.user.firstname} ${this.user.lastname}</span>
-                <a href="/aacsb/aol/settings" class="btn btn-sm btn-outline" style="color: white; border-color: rgba(255,255,255,0.3);">
+                <a href="${window.APP_BASE}/aol/settings" class="btn btn-sm btn-outline" style="color: white; border-color: rgba(255,255,255,0.3);">
                     ${i18n.t('Settings')}
                 </a>
                 <button onclick="app.logout()" class="btn btn-sm btn-outline" style="color: white; border-color: rgba(255,255,255,0.3);">
@@ -52,7 +52,7 @@ class AolApp {
     async logout() {
         try {
             await api.logout();
-            window.location.href = '/aacsb/login';
+            window.location.href = window.APP_BASE + '/login';
         } catch (error) {
             console.error('Logout failed:', error);
         }
@@ -87,7 +87,7 @@ class AolApp {
         }
 
         container.innerHTML = this.programmes.map(prog => `
-            <a href="/aacsb/aol/programme/${prog.id}" class="programme-card">
+            <a href="${window.APP_BASE}/aol/programme/${prog.id}" class="programme-card">
                 <h3>${i18n.getLang() === 'no' ? (prog.name_no || prog.name_eng) : (prog.name_eng || prog.name_no)}</h3>
                 <div class="code">${prog.programme_code}</div>
                 <div class="stats">
@@ -134,7 +134,7 @@ class AolApp {
 
             const progHtml = Object.values(byProgramme).map(prog => `
                 <div style="margin-bottom:0.75rem;">
-                    <a href="/aacsb/aol/programme/${prog.id}" style="font-weight:600; color:#1e40af;">${prog.code}</a>
+                    <a href="${window.APP_BASE}/aol/programme/${prog.id}" style="font-weight:600; color:#1e40af;">${prog.code}</a>
                     <span class="text-muted" style="font-size:0.875rem; margin-left:0.4rem;">${prog.name}</span>
                     <ul style="margin:0.3rem 0 0 1.1rem; padding:0; list-style:disc;">
                         ${prog.items.map(item => `

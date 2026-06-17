@@ -37,6 +37,9 @@ logs/
 *.temp
 .cache/
 
+# Dev-only tooling (nginx config, ad-hoc migrations, scripts)
+dev/
+
 # Backups
 backups/
 *.sql.gz

@@ -331,7 +331,8 @@
         i18n.init();
         const { t } = i18n;
 
-        const API_BASE = '/aacsb/api';
+        const APP_BASE = '/' + window.location.pathname.split('/')[1];
+        const API_BASE = APP_BASE + '/api';
         let currentUser = null;
         let publicationsData = null;
         let sortState = { column: 'year', direction: 'desc' };
@@ -347,7 +348,7 @@
             try {
                 const response = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' });
                 if (!response.ok) {
-                    window.location.href = '/aacsb/login';
+                    window.location.href = APP_BASE + '/login';
                     return;
                 }
                 currentUser = await response.json();
@@ -366,18 +367,18 @@
                     }
                 }
             } catch (error) {
-                window.location.href = '/aacsb/login';
+                window.location.href = APP_BASE + '/login';
             }
         }
 
         async function stopImpersonation() {
-            await fetch('/aacsb/api/admin/stop-impersonation', { method: 'POST', credentials: 'include' });
+            await fetch(APP_BASE + '/api/admin/stop-impersonation', { method: 'POST', credentials: 'include' });
             location.reload();
         }
 
         async function logout() {
             await fetch(`${API_BASE}/auth/logout`, { method: 'POST', credentials: 'include' });
-            window.location.href = '/aacsb/login';
+            window.location.href = APP_BASE + '/login';
         }
 
         function initYearSelects() {

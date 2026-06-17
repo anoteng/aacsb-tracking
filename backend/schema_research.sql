@@ -81,7 +81,7 @@ CREATE TABLE IF NOT EXISTS intellectual_contributions (
     nva_id VARCHAR(255) NOT NULL UNIQUE,
     title TEXT NOT NULL,
     year INT,
-    publication_type ENUM('prj_article', 'peer_reviewed_other', 'other_ic') DEFAULT 'other_ic',
+    publication_type ENUM('prj_article', 'peer_reviewed_other', 'other_ic', 'not_relevant') DEFAULT 'other_ic',
     portfolio_category ENUM('basic_discovery', 'applied_integration', 'teaching_learning') DEFAULT NULL,
     nva_data JSON,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -94,7 +94,7 @@ CREATE TABLE IF NOT EXISTS intellectual_contributions (
 CREATE TABLE IF NOT EXISTS user_intellectual_contributions (
     user_id INT NOT NULL,
     ic_id INT NOT NULL,
-    publication_type ENUM('prj_article', 'peer_reviewed_other', 'other_ic') DEFAULT NULL,
+    publication_type ENUM('prj_article', 'peer_reviewed_other', 'other_ic', 'not_relevant') DEFAULT NULL,
     portfolio_category ENUM('basic_discovery', 'applied_integration', 'teaching_learning') DEFAULT NULL,
     societal_impact TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

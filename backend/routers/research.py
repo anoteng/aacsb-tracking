@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 from pydantic import BaseModel
 from typing import Optional, List
+from datetime import date
 import json
 
 from database import get_db
@@ -19,7 +20,7 @@ router = APIRouter(prefix="/research", tags=["Research"])
 
 # Pydantic models
 class ICCategorization(BaseModel):
-    publication_type: Optional[str] = None  # prj_article, peer_reviewed_other, other_ic
+    publication_type: Optional[str] = None  # prj_article, peer_reviewed_other, other_ic, not_relevant
     portfolio_category: Optional[str] = None  # basic_discovery, applied_integration, teaching_learning
     societal_impact: Optional[str] = None
 
@@ -50,8 +51,8 @@ class UserExemptionCreate(BaseModel):
     notes: Optional[str] = None
 
 
-# Helper: Get reference year
-REFERENCE_YEAR = 2025
+# Helper: Get reference year (evaluated at startup; service restarts on deploy)
+REFERENCE_YEAR = date.today().year
 
 
 @router.get("/publications")
@@ -1182,13 +1183,14 @@ async def get_researcher_timeline(
         year_ics = ics_by_year.get(year, [])
         year_activities = activities_by_year.get(year, [])
 
-        prj_count = sum(1 for ic in year_ics if ic.get("is_prj"))
-        other_ic_count = len(year_ics) - prj_count
+        relevant_ics = [ic for ic in year_ics if ic.get("publication_type") != "not_relevant"]
+        prj_count = sum(1 for ic in relevant_ics if ic.get("is_prj"))
+        other_ic_count = len(relevant_ics) - prj_count
 
         timeline.append({
             "year": year,
             "ics": year_ics,
-            "ic_count": len(year_ics),
+            "ic_count": len(relevant_ics),
             "prj_count": prj_count,
             "other_ic_count": other_ic_count,
             "activities": year_activities,
@@ -1198,7 +1200,7 @@ async def get_researcher_timeline(
     # Calculate rolling 6-year windows starting from various years
     # This helps identify when someone might fall out of qualification
     rolling_windows = []
-    for end_year in range(max(min_year + 5, REFERENCE_YEAR - 2), max_year + 3):
+    for end_year in range(max(min_year + 5, REFERENCE_YEAR - 2), max_year + 5):
         start_year = end_year - 5  # 6-year window
 
         window_prj = 0
@@ -1208,7 +1210,7 @@ async def get_researcher_timeline(
         for year in range(start_year, end_year + 1):
             year_data = ics_by_year.get(year, [])
             window_prj += sum(1 for ic in year_data if ic.get("is_prj"))
-            window_ics += len(year_data)
+            window_ics += sum(1 for ic in year_data if ic.get("publication_type") != "not_relevant")
             window_activities += len(activities_by_year.get(year, []))
 
         # Get active exemptions for this window
